@@ -1,0 +1,2612 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#080d17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/svg+xml" href="./icon.svg">
+<link rel="apple-touch-icon" href="./icon.svg">
+<title>MARKET DESK — 모바일 트레이딩</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080d17;
+    --panel: #0f1726;
+    --panel-soft: #131e31;
+    --border: #1e2d44;
+    --text: #e6eef8;
+    --muted: #8494ac;
+    --up: #ff4d64;
+    --down: #4b9cff;
+  }
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #04070d;
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Noto Sans KR", sans-serif;
+    font-variant-numeric: tabular-nums;
+    overflow-x: hidden;
+  }
+  /* 모바일 앱 프레임 (데스크톱에서 열어도 모바일 앱 화면 비율로 깔끔히 중앙 정렬) */
+  #mobileAppShell {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100dvh;
+    margin: 0 auto;
+    background: var(--bg);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.75);
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .up { color: var(--up) !important; }
+  .down { color: var(--down) !important; }
+  .flash-up { animation: flashRed 0.55s ease; }
+  .flash-down { animation: flashBlue 0.55s ease; }
+  @keyframes flashRed {
+    0% { background-color: rgba(255, 77, 100, 0.32); }
+    100% { background-color: transparent; }
+  }
+  @keyframes flashBlue {
+    0% { background-color: rgba(75, 156, 255, 0.32); }
+    100% { background-color: transparent; }
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-thumb { background: #23344e; border-radius: 99px; }
+
+  /* 기업·코인 로고 배지 */
+  .company-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #ffffff;
+    border: 1px solid #d5dfec;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .company-badge.sm {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+  .company-badge img { width: 22px; height: 22px; object-fit: contain; }
+  .company-badge.sm img { width: 18px; height: 18px; }
+  .company-badge span { font-size: 10px; font-weight: 900; color: #1e293b; }
+
+  /* 바텀 시트 모달 스타일 */
+  .bottom-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(3px);
+    z-index: 60;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .bottom-sheet-backdrop.open {
+    display: flex;
+  }
+  .bottom-sheet-panel {
+    width: 100%;
+    max-width: 480px;
+    max-height: 88dvh;
+    overflow-y: auto;
+    background: #0f1829;
+    border-top: 1px solid #2c4263;
+    border-radius: 20px 20px 0 0;
+    padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+    animation: sheetSlideUp 0.22s ease-out;
+  }
+  @keyframes sheetSlideUp {
+    from { transform: translateY(24px); opacity: 0.6; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* 튜토리얼 하이라이트 */
+  .tutorial-highlight {
+    position: relative;
+    z-index: 45 !important;
+    box-shadow: 0 0 0 2.5px #f5c451, 0 0 24px rgba(245, 196, 81, 0.45) !important;
+    border-radius: 14px;
+  }
+  #tutorialOverlay {
+    position: fixed;
+    inset: 0;
+    background: transparent !important;
+    pointer-events: none;
+    z-index: 70;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 10px;
+  }
+  #tutorialOverlay.open { display: flex; }
+  #tutorialOverlay > div {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 460px;
+    margin-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+
+  /* 탭 전환 제어 */
+  .mobile-view { display: none; }
+  .mobile-view.active { display: block; }
+</style>
+</head>
+<body>
+
+<div id="mobileAppShell">
+  <!-- ======================================================================
+       1. 모바일 앱 상단 컴팩트 헤더
+       ====================================================================== -->
+  <header class="sticky top-0 z-30 bg-[#0a111e]/95 backdrop-blur border-b border-[#1f2d42] px-3.5 pt-2.5 pb-2">
+    <div class="flex items-center justify-between gap-2">
+      <!-- 브랜드 -->
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-[#ff4d64] to-[#4b9cff] flex items-center justify-center font-black text-white text-xs shrink-0 shadow">MD</div>
+        <div class="min-w-0">
+          <div class="font-black tracking-wide text-sm leading-none flex items-center gap-1.5">
+            <span>MARKET<span class="text-[#ff4d64]">DESK</span></span>
+            <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#1b2b44] text-[#8ab4f8]">MTS</span>
+          </div>
+          <div id="simClockDisplay" class="text-[10px] text-[#8494ac] mt-1 truncate">2026-11-18 10:15</div>
+        </div>
+      </div>
+
+      <!-- 우측 액션: 배속 / 계정 / 도구 드로어 -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button id="cycleSpeedBtn" class="px-2.5 py-1.5 rounded-lg bg-[#142238] border border-[#263b5c] text-[11px] font-extrabold text-[#93c5fd] active:scale-95 transition" title="시뮬레이션 배속 변경">
+          ⚡ <span id="speedLabel">1x</span>
+        </button>
+        <button id="openAuthModalBtn" class="px-2.5 py-1.5 rounded-lg bg-[#162742] border border-[#325182] text-[11px] font-bold text-white flex items-center gap-1.5 active:scale-95 transition">
+          <span id="userAvatarBadge" class="w-4 h-4 rounded-full bg-gradient-to-tr from-emerald-500 to-sky-500 text-[9px] font-black grid place-items-center text-white">G</span>
+          <span id="userDisplayName" class="max-w-[54px] truncate">게스트</span>
+        </button>
+        <button id="openToolsSheetBtn" class="w-8 h-8 rounded-lg bg-[#131f33] border border-[#263854] text-slate-200 grid place-items-center text-sm font-bold active:scale-95 transition" title="시뮬레이터 도구">
+          ☰
+        </button>
+      </div>
+    </div>
+
+    <!-- 환율 미니 티커 -->
+    <div id="globalTickerBar" class="mt-2 pt-1.5 border-t border-[#162236] flex items-center gap-4 overflow-x-auto no-scrollbar text-[10px] whitespace-nowrap"></div>
+  </header>
+
+  <!-- ======================================================================
+       2. 메인 콘텐츠 (4개 모바일 전용 탭 뷰)
+       ====================================================================== -->
+  <main class="flex-1 px-3.5 py-3 space-y-3">
+
+    <!-- [VIEW 1: 시세 · 탐색] -->
+    <section id="view-market" class="mobile-view active space-y-3">
+      <!-- 검색바 -->
+      <div class="relative">
+        <input id="searchInput" type="text" placeholder="종목명, 티커, 섹터 검색 (예: 삼성, NVDA, BTC)..." class="w-full bg-[#0f1726] border border-[#23344e] rounded-xl pl-3.5 pr-9 py-2.5 text-xs text-white placeholder-[#5d6f89] outline-none focus:border-[#4b9cff]">
+        <button id="clearSearchBtn" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[#8494ac] px-1.5 py-0.5">✕</button>
+      </div>
+
+      <!-- 권역 탭 -->
+      <div id="regionTabs" class="flex gap-1.5 overflow-x-auto no-scrollbar text-xs font-bold">
+        <button data-region="ALL" class="region-btn px-3 py-1.5 rounded-lg bg-[#253c61] text-white shrink-0">전체</button>
+        <button data-region="FAV" class="region-btn px-3 py-1.5 rounded-lg bg-[#131e31] text-amber-300 shrink-0">★ 관심</button>
+        <button data-region="KR" class="region-btn px-3 py-1.5 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0">🇰🇷 한국</button>
+        <button data-region="US" class="region-btn px-3 py-1.5 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0">🇺🇸 미국</button>
+        <button data-region="JP" class="region-btn px-3 py-1.5 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0">🇯🇵 일본</button>
+        <button data-region="CNHK" class="region-btn px-3 py-1.5 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0">🇨🇳 중·홍콩</button>
+        <button data-region="EU" class="region-btn px-3 py-1.5 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0">🇪🇺 유럽</button>
+        <button data-region="ETC" class="region-btn px-3 py-1.5 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0">🌏 기타</button>
+        <button data-region="CRYPTO" class="region-btn px-3 py-1.5 rounded-lg bg-[#131e31] text-[#f5c451] shrink-0">🪙 코인</button>
+      </div>
+
+      <!-- 세부 거래소 칩 -->
+      <div id="exchangeChips" class="flex gap-1.5 overflow-x-auto no-scrollbar"></div>
+
+      <!-- 종목 리스트 카드 -->
+      <div class="card overflow-hidden">
+        <div class="px-3.5 py-2 bg-[#111b2e] border-b border-[#1c2b42] flex items-center justify-between text-[11px] text-[#7c8ea8]">
+          <span>종목 / 거래소</span>
+          <span id="listedCountBadge" class="font-bold text-[#93c5fd]">0 종목</span>
+        </div>
+        <div id="marketListContainer" class="divide-y divide-[#152033]"></div>
+      </div>
+
+      <!-- 글로벌 주요 지수·원자재·채권 참고 보드 (접이식) -->
+      <details class="card p-3.5 group">
+        <summary class="list-none flex items-center justify-between cursor-pointer text-xs font-extrabold text-white">
+          <span>🌍 글로벌 시장 참고 지표 (지수·금·원유·금리)</span>
+          <span class="text-[#8494ac] text-[11px] group-open:rotate-180 transition">▼</span>
+        </summary>
+        <div class="mt-3 pt-2.5 border-t border-[#1c2b42]">
+          <div id="benchmarkTabs" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-2.5 text-[11px]">
+            <button data-benchmark="ALL" class="benchmark-tab px-2.5 py-1 rounded-lg bg-[#253c61] text-white shrink-0 font-bold">전체</button>
+            <button data-benchmark="INDEX" class="benchmark-tab px-2.5 py-1 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0 font-bold">지수</button>
+            <button data-benchmark="COMMODITY" class="benchmark-tab px-2.5 py-1 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0 font-bold">원자재</button>
+            <button data-benchmark="BOND" class="benchmark-tab px-2.5 py-1 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0 font-bold">채권</button>
+            <button data-benchmark="FX" class="benchmark-tab px-2.5 py-1 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0 font-bold">환율</button>
+          </div>
+          <div id="benchmarkGrid" class="grid grid-cols-2 gap-2"></div>
+          <p class="text-[10px] text-[#64748b] mt-2.5">※ 시장 구조를 익히기 위한 가상 예시 데이터입니다.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- [VIEW 2: 차트 · 상세] -->
+    <section id="view-chart" class="mobile-view space-y-3">
+      <!-- 종목 요약 헤더 카드 -->
+      <div class="card p-3.5">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div id="selectedLogoBox" class="company-badge"><span>MD</span></div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <h2 id="chartStockName" class="text-base font-extrabold text-white truncate">NVIDIA</h2>
+                <button id="favToggleBtn" class="text-base leading-none text-amber-400">★</button>
+              </div>
+              <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                <span id="chartExchangeBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#1b2b44] text-[#93c5fd]">NASDAQ · USD</span>
+                <span id="marketSessionBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">● 개장</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-right shrink-0">
+            <div id="chartNativePrice" class="text-xl font-black text-white tracking-tight">$151.55</div>
+            <div id="chartChangeBadge" class="text-[11px] font-bold up mt-0.5">+$0.00 (0.00%)</div>
+            <div id="chartKrwEquiv" class="text-[10px] text-[#8494ac]">≈ ₩213,761</div>
+          </div>
+        </div>
+        <div id="chartStockSub" class="text-[11px] text-[#8494ac] mt-2 pt-2 border-t border-[#1a273c] truncate"></div>
+      </div>
+
+      <!-- 캔들스틱 차트 카드 -->
+      <div class="card p-3.5">
+        <div class="flex items-center justify-between gap-2 mb-2.5">
+          <div id="timeframeBtns" class="flex gap-1 bg-[#09101d] p-1 rounded-lg border border-[#1d2b40]">
+            <button data-tf="1D" class="tf-btn px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#253c61] text-white">분봉</button>
+            <button data-tf="1W" class="tf-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-[#8ea0ba]">일봉</button>
+            <button data-tf="1M" class="tf-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-[#8ea0ba]">주봉</button>
+            <button data-tf="1Y" class="tf-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-[#8ea0ba]">월봉</button>
+          </div>
+          <div class="flex items-center gap-2 text-[10px]">
+            <span class="text-amber-300 font-bold">— MA5</span>
+            <span class="text-purple-300 font-bold">— MA20</span>
+          </div>
+        </div>
+
+        <!-- 터치 시 십자선 가격 정보 고정 표시바 (손가락에 가리지 않게 상단에 배치) -->
+        <div id="chartTouchInfoBar" class="grid grid-cols-4 gap-1 bg-[#09101d] border border-[#1a273c] rounded-lg px-2.5 py-1.5 mb-2 text-[10px] text-[#8ea0ba]">
+          <span>시 <b id="ohlcOpen" class="text-slate-200">-</b></span>
+          <span>고 <b id="ohlcHigh" class="up">-</b></span>
+          <span>저 <b id="ohlcLow" class="down">-</b></span>
+          <span class="text-right">량 <b id="ohlcVol" class="text-slate-200">-</b></span>
+        </div>
+
+        <div id="chartContainer" class="relative w-full h-[270px] bg-[#09101c] border border-[#19263b] rounded-xl overflow-hidden">
+          <canvas id="candleCanvas" class="block w-full h-full touch-pan-y"></canvas>
+        </div>
+        <div class="flex items-center justify-between text-[10px] text-[#7c8ea8] mt-2">
+          <span>차트를 손가락으로 좌우 드래그하면 캔들 시세를 확인합니다.</span>
+          <span id="exchangeRulesHint">수수료 0.070%</span>
+        </div>
+      </div>
+
+      <!-- 차트 하단 빠른 매수/매도 버튼 -->
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <button type="button" onclick="openMobileOrderSide('buy')" class="py-3.5 rounded-xl bg-[#ff4d64] text-white font-black text-sm shadow-lg active:scale-98 transition">
+          매수하기 (BUY)
+        </button>
+        <button type="button" onclick="openMobileOrderSide('sell')" class="py-3.5 rounded-xl bg-[#4b9cff] text-white font-black text-sm shadow-lg active:scale-98 transition">
+          매도하기 (SELL)
+        </button>
+      </div>
+    </section>
+
+    <!-- [VIEW 3: 호가 · 주문] -->
+    <section id="view-order" class="mobile-view space-y-3">
+      <!-- 상단 선택 종목 미니 배너 -->
+      <div class="card px-3.5 py-2.5 flex items-center justify-between">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="orderStockName" class="text-sm font-extrabold text-white truncate">NVIDIA</span>
+          <span id="orderSessionTag" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold">개장</span>
+        </div>
+        <div class="text-right">
+          <span id="orderLivePrice" class="text-sm font-black text-white">$151.55</span>
+          <span id="orderLivePct" class="text-xs font-bold up ml-1">+0.00%</span>
+        </div>
+      </div>
+
+      <!-- 모바일 증권앱 스타일 분할 화면: 좌측 5단계 호가 + 우측 주문 입력 -->
+      <div class="grid grid-cols-12 gap-2.5 items-stretch">
+        <!-- 좌측 5칸: 컴팩트 5단계 호가창 -->
+        <div class="col-span-5 card p-2.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-extrabold text-white">5단계 호가</span>
+            <span id="orderBookSource" class="text-[9px] text-amber-300">가상</span>
+          </div>
+          <div id="orderBookBox" class="space-y-1 text-[11px] flex-1 flex flex-col justify-center"></div>
+          <div class="text-[9px] text-[#6e809c] text-center mt-1.5">호가 터치 시 단가 입력</div>
+        </div>
+
+        <!-- 우측 7칸: 주문 입력 폼 -->
+        <div class="col-span-7 card p-3 flex flex-col justify-between">
+          <div>
+            <!-- 매수 / 매도 탭 -->
+            <div class="grid grid-cols-2 gap-1 bg-[#0a111e] p-1 rounded-xl border border-[#1e2c40] mb-2.5">
+              <button id="sideBuyBtn" class="py-2 rounded-lg text-xs font-extrabold bg-[#ff4d64] text-white transition">매수</button>
+              <button id="sideSellBtn" class="py-2 rounded-lg text-xs font-extrabold text-[#8494ac] transition">매도</button>
+            </div>
+
+            <!-- 지정가 / 시장가 -->
+            <div class="grid grid-cols-2 gap-1 bg-[#0a111e] p-1 rounded-lg border border-[#1e2c40] mb-2.5">
+              <button data-otype="LIMIT" class="otype-btn py-1 rounded-md text-[11px] font-bold bg-[#253c61] text-white">지정가</button>
+              <button data-otype="MARKET" class="otype-btn py-1 rounded-md text-[11px] font-bold text-[#8ea0ba]">시장가</button>
+            </div>
+
+            <!-- 단가 입력 -->
+            <div class="mb-2.5">
+              <div class="flex justify-between text-[10px] text-[#8494ac] mb-1">
+                <span>가격 (<span id="orderCurrencyLabel">USD</span>)</span>
+                <span id="tickSizeHint">단위 0.05</span>
+              </div>
+              <div class="flex items-center bg-[#09101d] border border-[#263854] rounded-xl overflow-hidden">
+                <button id="priceMinusBtn" class="px-2.5 py-2 text-sm font-bold text-[#8ea0ba] active:bg-[#162238]">−</button>
+                <input id="orderPriceInput" type="number" step="any" inputmode="decimal" class="w-full bg-transparent text-right font-bold text-xs text-white px-1.5 py-2 outline-none">
+                <button id="pricePlusBtn" class="px-2.5 py-2 text-sm font-bold text-[#8ea0ba] active:bg-[#162238]">+</button>
+              </div>
+            </div>
+
+            <!-- 수량 입력 -->
+            <div class="mb-2.5">
+              <div class="flex justify-between text-[10px] text-[#8494ac] mb-1">
+                <span>수량 (<span id="lotUnitHint">1주</span>)</span>
+                <span id="maxOrderQtyText" class="text-[#93c5fd] underline">최대 0</span>
+              </div>
+              <div class="flex items-center bg-[#09101d] border border-[#263854] rounded-xl overflow-hidden">
+                <button id="qtyMinusBtn" class="px-2.5 py-2 text-sm font-bold text-[#8ea0ba] active:bg-[#162238]">−</button>
+                <input id="orderQtyInput" type="number" min="0" step="any" inputmode="decimal" value="1" class="w-full bg-transparent text-right font-bold text-xs text-white px-1.5 py-2 outline-none">
+                <button id="qtyPlusBtn" class="px-2.5 py-2 text-sm font-bold text-[#8ea0ba] active:bg-[#162238]">+</button>
+              </div>
+              <div class="grid grid-cols-4 gap-1 mt-1.5">
+                <button data-pct="0.1" class="pct-btn py-1 rounded bg-[#131f33] text-[10px] text-[#9eb0c9] font-bold">10%</button>
+                <button data-pct="0.25" class="pct-btn py-1 rounded bg-[#131f33] text-[10px] text-[#9eb0c9] font-bold">25%</button>
+                <button data-pct="0.5" class="pct-btn py-1 rounded bg-[#131f33] text-[10px] text-[#9eb0c9] font-bold">50%</button>
+                <button data-pct="1" class="pct-btn py-1 rounded bg-[#131f33] text-[10px] text-[#9eb0c9] font-bold">최대</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 예상 정산 요약 -->
+          <div class="bg-[#0a1220] border border-[#1b2a40] rounded-xl p-2.5 space-y-1 text-[10px] mt-1">
+            <div class="flex justify-between">
+              <span class="text-[#8494ac]">현지 금액</span>
+              <span id="estNativeAmount" class="font-bold text-slate-200">$0</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-[#8494ac]">수수료·세금</span>
+              <span id="estFeeTaxKrw" class="text-amber-300 font-semibold">₩0</span>
+            </div>
+            <div class="border-t border-[#1c2b42] pt-1 flex justify-between text-xs">
+              <span class="font-bold text-white">예상 총액</span>
+              <span id="estTotalKrw" class="font-black text-white">₩0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="marketClosedNotice" class="hidden px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-300">
+        현재 휴장/마감 시간입니다. 주문 시 <b>미체결 예약</b>으로 등록됩니다.
+      </div>
+
+      <!-- 주문 실행 CTA 버튼 -->
+      <button id="submitOrderBtn" class="w-full py-3.5 rounded-xl font-black text-sm bg-[#ff4d64] text-white shadow-lg active:scale-98 transition">
+        매수 주문 실행
+      </button>
+    </section>
+
+    <!-- [VIEW 4: 내 자산 · 주문내역] -->
+    <section id="view-portfolio" class="mobile-view space-y-3">
+      <!-- 총 자산 히어로 카드 -->
+      <div class="card p-4 bg-gradient-to-br from-[#132238] to-[#0f1726] border-[#274066]">
+        <div class="flex items-center justify-between text-xs text-[#94a6c2]">
+          <span>총 평가 자산 (KRW)</span>
+          <span id="statInitialSeedBadge" class="text-[11px] font-semibold text-[#60a5fa]">원금 ₩1,000만</span>
+        </div>
+        <div id="statTotalAssets" class="text-2xl font-black text-white mt-1 tracking-tight">₩10,000,000</div>
+        <div id="statTotalReturn" class="text-xs text-[#8494ac] mt-1">초기 자금 대비 0.00%</div>
+
+        <div class="grid grid-cols-2 gap-2.5 mt-3.5 pt-3 border-t border-[#1f324f] text-xs">
+          <div>
+            <div class="text-[10px] text-[#8494ac]">주문 가능 현금</div>
+            <div id="statCashKrw" class="font-extrabold text-white mt-0.5">₩10,000,000</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-[#8494ac]">보유 주식·코인 평가</div>
+            <div id="statStockEval" class="font-extrabold text-white mt-0.5">₩0</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-[#8494ac]">미실현 평가 손익</div>
+            <div id="statUnrealizedPnl" class="font-extrabold mt-0.5">₩0</div>
+          </div>
+          <div>
+            <div class="text-[10px] text-[#8494ac]">누적 실현 손익</div>
+            <div id="statRealizedPnl" class="font-extrabold mt-0.5">₩0</div>
+          </div>
+        </div>
+        <div id="statFeeDivSub" class="text-[10px] text-[#7c8ea8] mt-2">배당 +₩0 · 비용 -₩0</div>
+      </div>
+
+      <!-- 권역별 포트폴리오 비중 바 -->
+      <div class="card p-3.5">
+        <div class="text-xs font-extrabold text-white mb-2.5">권역별 자산 비중</div>
+        <div id="mobileRegionBars" class="space-y-2"></div>
+      </div>
+
+      <!-- 보유 자산 / 미체결 / 체결 로그 탭 카드 -->
+      <div class="card p-3.5">
+        <div class="flex items-center justify-between border-b border-[#1e2c40] pb-2 mb-2.5">
+          <div class="flex gap-1" id="bottomDeskTabs">
+            <button data-btab="holdings" class="btab-btn px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#253c61] text-white">보유 (<span id="tabHoldCount">0</span>)</button>
+            <button data-btab="openOrders" class="btab-btn px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#131e31] text-[#8ea0ba]">미체결 (<span id="tabOpenCount">0</span>)</button>
+            <button data-btab="executions" class="btab-btn px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#131e31] text-[#8ea0ba]">거래로그</button>
+          </div>
+          <button id="cancelAllOpenBtn" class="text-[11px] font-semibold text-[#ff7b8b] hidden">전체취소</button>
+        </div>
+        <div id="bottomDeskContent" class="min-h-[160px]"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ======================================================================
+       3. 모바일 하단 고정 내비게이션 바 (4탭)
+       ====================================================================== -->
+  <nav id="mobileBottomNav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] z-40 bg-[#0b1322]/95 backdrop-blur border-t border-[#1e2d44] grid grid-cols-4 text-[11px] font-bold" style="padding-bottom: env(safe-area-inset-bottom);">
+    <button type="button" data-mtab="market" class="mtab-btn py-2 flex flex-col items-center gap-0.5 text-[#60a5fa]">
+      <span class="text-base leading-none">🌐</span>
+      <span>시세·탐색</span>
+    </button>
+    <button type="button" data-mtab="chart" class="mtab-btn py-2 flex flex-col items-center gap-0.5 text-[#8494ac]">
+      <span class="text-base leading-none">📈</span>
+      <span>차트·상세</span>
+    </button>
+    <button type="button" data-mtab="order" class="mtab-btn py-2 flex flex-col items-center gap-0.5 text-[#8494ac] relative">
+      <span class="text-base leading-none">⚡</span>
+      <span>호가·주문</span>
+      <span id="navOpenOrderDot" class="hidden absolute top-1.5 right-6 w-2 h-2 rounded-full bg-[#ff4d64]"></span>
+    </button>
+    <button type="button" data-mtab="portfolio" class="mtab-btn py-2 flex flex-col items-center gap-0.5 text-[#8494ac]">
+      <span class="text-base leading-none">💼</span>
+      <span>내 자산</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ======================================================================
+     바텀 시트 1: 시뮬레이터 도구 모음 (☰ 메뉴)
+     ====================================================================== -->
+<div id="toolsSheet" class="bottom-sheet-backdrop">
+  <div class="bottom-sheet-panel space-y-3">
+    <div class="w-10 h-1 bg-[#2c4263] rounded-full mx-auto mb-1"></div>
+    <div class="flex items-center justify-between pb-2.5 border-b border-[#1f2f47]">
+      <h3 class="text-sm font-extrabold text-white">🛠️ 시뮬레이터 도구 및 설정</h3>
+      <button class="close-sheet text-xl text-[#8494ac] px-2">×</button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      <button id="jumpNextOpenBtn" class="p-3 rounded-xl bg-[#162742] border border-[#2b4670] text-left">
+        <div class="font-extrabold text-[#93c5fd]">⏩ 다음 개장 이동</div>
+        <div class="text-[10px] text-[#8494ac] mt-0.5">선택 종목 개장 시각으로</div>
+      </button>
+      <button id="toggleHolidayBtn" class="p-3 rounded-xl bg-[#162742] border border-[#2b4670] text-left">
+        <div class="font-extrabold text-amber-300">🗓️ 휴장일: <span id="holidayStateText">OFF</span></div>
+        <div class="text-[10px] text-[#8494ac] mt-0.5">공휴일 휴장 모드 전환</div>
+      </button>
+      <button id="corpActionBtn" class="p-3 rounded-xl bg-[#162742] border border-[#2b4670] text-left">
+        <div class="font-extrabold text-[#f5c451]">💰 가상 배당 지급</div>
+        <div class="text-[10px] text-[#8494ac] mt-0.5">보유 종목 분기배당 테스트</div>
+      </button>
+      <button id="splitActionBtn" class="p-3 rounded-xl bg-[#162742] border border-[#2b4670] text-left">
+        <div class="font-extrabold text-[#c4b5fd]">✂️ 액면분할 테스트</div>
+        <div class="text-[10px] text-[#8494ac] mt-0.5">선택 보유 종목 비율 분할</div>
+      </button>
+      <button id="openFxModalBtn" class="p-3 rounded-xl bg-[#162742] border border-[#2b4670] text-left">
+        <div class="font-extrabold text-emerald-300">💱 환율 · 외화지갑</div>
+        <div class="text-[10px] text-[#8494ac] mt-0.5">통합증거금 및 통화별 잔고</div>
+      </button>
+      <button id="connectEquityApiBtn" class="p-3 rounded-xl bg-[#162742] border border-[#2b4670] text-left">
+        <div class="font-extrabold text-[#8de3c5]">📡 주식 시세 API</div>
+        <div class="text-[10px] text-[#8494ac] mt-0.5">Twelve Data 키 연결</div>
+      </button>
+    </div>
+
+    <div class="pt-2 border-t border-[#1f2f47] flex items-center justify-between text-xs">
+      <button id="openTutorialBtn" class="px-3 py-2 rounded-lg bg-[#1d3252] text-[#f5c451] font-bold">? 참여형 튜토리얼</button>
+      <button id="exportCsvBtn" class="px-3 py-2 rounded-lg bg-[#162338] text-slate-300 font-semibold">CSV 저장</button>
+      <button id="resetSimBtn" class="px-3 py-2 rounded-lg bg-[#2b1824] text-[#ff7b8b] font-bold">계좌 초기화</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     바텀 시트 2: 회원 계정 / 로그인 / 회원가입
+     ====================================================================== -->
+<div id="authModal" class="bottom-sheet-backdrop">
+  <div class="bottom-sheet-panel">
+    <div class="w-10 h-1 bg-[#2c4263] rounded-full mx-auto mb-2"></div>
+    <div class="flex items-center justify-between pb-3 border-b border-[#1f2f47]">
+      <div>
+        <h3 class="text-sm font-extrabold text-white">👤 트레이더 회원 계정 관리</h3>
+        <p class="text-[11px] text-[#8494ac] mt-0.5">계좌별 가상 시드머니와 거래 내역이 독립 저장됩니다.</p>
+      </div>
+      <button class="close-sheet text-xl text-[#8494ac] px-2">×</button>
+    </div>
+
+    <div class="mt-3 p-3 rounded-xl bg-[#132238] border border-[#274066] flex items-center justify-between gap-2">
+      <div>
+        <div class="text-[10px] text-[#8ab4f8] font-bold">현재 활성 계좌</div>
+        <div id="authCurrentUserInfo" class="text-xs font-extrabold text-white mt-0.5">게스트 트레이더 (비회원 체험중)</div>
+      </div>
+      <button id="logoutMemberBtn" class="hidden px-2.5 py-1.5 rounded-lg bg-[#2a3954] text-xs font-bold text-white shrink-0">로그아웃</button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-1.5 bg-[#0a111e] p-1 rounded-xl border border-[#1e2c40] my-3">
+      <button id="authTabLogin" class="py-2 rounded-lg text-xs font-bold bg-[#233859] text-white">회원 로그인</button>
+      <button id="authTabRegister" class="py-2 rounded-lg text-xs font-bold text-[#8494ac]">신규 회원가입</button>
+    </div>
+
+    <form id="loginForm" class="space-y-3">
+      <div>
+        <label class="block text-xs text-[#94a6c2] mb-1">트레이더 아이디</label>
+        <input id="loginIdInput" type="text" required placeholder="예: quant_kim" class="w-full bg-[#09101d] border border-[#263854] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#4b9cff]">
+      </div>
+      <div>
+        <label class="block text-xs text-[#94a6c2] mb-1">비밀번호</label>
+        <input id="loginPwInput" type="password" required placeholder="비밀번호 입력" class="w-full bg-[#09101d] border border-[#263854] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none focus:border-[#4b9cff]">
+      </div>
+      <div id="loginErrorMsg" class="text-xs up hidden"></div>
+      <button type="submit" class="w-full py-3 rounded-xl bg-[#2563eb] text-white font-extrabold text-xs">로그인 및 내 계좌 불러오기</button>
+    </form>
+
+    <form id="registerForm" class="space-y-3 hidden">
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-xs text-[#94a6c2] mb-1">닉네임</label>
+          <input id="regNicknameInput" type="text" required placeholder="예: 불개미" class="w-full bg-[#09101d] border border-[#263854] rounded-xl px-3 py-2.5 text-xs text-white outline-none">
+        </div>
+        <div>
+          <label class="block text-xs text-[#94a6c2] mb-1">아이디</label>
+          <input id="regIdInput" type="text" required placeholder="영문/숫자" class="w-full bg-[#09101d] border border-[#263854] rounded-xl px-3 py-2.5 text-xs text-white outline-none">
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs text-[#94a6c2] mb-1">비밀번호 (4자 이상)</label>
+        <input id="regPwInput" type="password" required minlength="4" placeholder="비밀번호 설정" class="w-full bg-[#09101d] border border-[#263854] rounded-xl px-3.5 py-2.5 text-xs text-white outline-none">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="block text-xs text-[#94a6c2] mb-1">초기 시드머니</label>
+          <select id="regSeedSelect" class="w-full bg-[#09101d] border border-[#263854] rounded-xl px-3 py-2.5 text-xs text-white outline-none">
+            <option value="10000000" selected>₩10,000,000 (1,000만)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-[#94a6c2] mb-1">투자 스타일</label>
+          <select id="regStyleSelect" class="w-full bg-[#09101d] border border-[#263854] rounded-xl px-3 py-2.5 text-xs text-white outline-none">
+            <option value="글로벌 분산투자">글로벌 분산투자</option>
+            <option value="단기 스윙·모멘텀">단기 스윙·모멘텀</option>
+            <option value="코인·고변동성">코인·고변동성</option>
+            <option value="배당·가치장기">배당·가치장기</option>
+          </select>
+        </div>
+      </div>
+      <div id="regErrorMsg" class="text-xs up hidden"></div>
+      <button type="submit" class="w-full py-3 rounded-xl bg-emerald-600 text-white font-extrabold text-xs">회원가입 완료 및 계좌 개설</button>
+    </form>
+
+    <div id="savedMembersWrap" class="mt-3.5 pt-3 border-t border-[#1f2f47] hidden">
+      <div class="text-[11px] text-[#8494ac] mb-2">등록된 회원 계정 (터치 시 아이디 입력)</div>
+      <div id="savedMembersList" class="flex flex-wrap gap-1.5"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     바텀 시트 3: 환율 · 다중 통화 지갑
+     ====================================================================== -->
+<div id="fxModal" class="bottom-sheet-backdrop">
+  <div class="bottom-sheet-panel">
+    <div class="w-10 h-1 bg-[#2c4263] rounded-full mx-auto mb-2"></div>
+    <div class="flex items-center justify-between pb-3 border-b border-[#1f2f47]">
+      <div>
+        <h3 class="text-sm font-extrabold text-white">💱 글로벌 환율 및 외화 지갑</h3>
+        <p class="text-[11px] text-[#8494ac] mt-0.5">해외 자산 매수 시 원화 자동 환전(스프레드 0.25%) 지원</p>
+      </div>
+      <button class="close-sheet text-xl text-[#8494ac] px-2">×</button>
+    </div>
+    <div class="mt-3 flex items-center justify-between bg-[#132036] px-3.5 py-2.5 rounded-xl border border-[#233859]">
+      <span class="text-xs font-bold text-white">원화(KRW) 자동 환전 결제</span>
+      <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-emerald-400">
+        <input id="autoFxCheckbox" type="checkbox" checked class="accent-emerald-500 w-4 h-4">
+        <span>활성화</span>
+      </label>
+    </div>
+    <div id="fxRatesGrid" class="grid grid-cols-2 gap-2.5 mt-3"></div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     참여형 튜토리얼 플로팅 카드
+     ====================================================================== -->
+<div id="tutorialOverlay">
+  <div class="card p-4 bg-[#111c30]/95 backdrop-blur border-[#3b5984] shadow-2xl">
+    <div class="flex items-center justify-between mb-1.5">
+      <span id="tutStepBadge" class="text-[10px] font-extrabold px-2 py-0.5 rounded bg-[#1e3557] text-[#93c5fd]">STEP 1 / 5</span>
+      <button id="tutSkipBtn" class="text-xs text-[#8494ac] underline px-1">건너뛰기</button>
+    </div>
+    <h3 id="tutTitle" class="text-sm font-extrabold text-white">MARKET DESK 모바일 가이드</h3>
+    <p id="tutDesc" class="text-xs text-slate-300 mt-1.5 leading-relaxed"></p>
+    <div id="tutActionStatus" class="mt-2 px-2.5 py-1.5 rounded-lg bg-[#14243a] border border-[#2b4669] text-[11px] text-[#f5c451]"></div>
+    <div class="flex items-center justify-between mt-3 pt-2.5 border-t border-[#1e2e47]">
+      <div id="tutDots" class="flex gap-1.5"></div>
+      <div class="flex items-center gap-1.5">
+        <button id="tutPrevBtn" class="px-3 py-1.5 rounded-lg bg-[#1a2840] text-xs font-bold text-slate-300 hidden">이전</button>
+        <button id="tutNextBtn" class="px-3.5 py-1.5 rounded-lg bg-[#ff4d64] text-xs font-extrabold text-white">다음 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 상단 슬라이드 토스트 알림 -->
+<div id="toastStack" class="fixed top-14 left-1/2 -translate-x-1/2 w-[92%] max-w-[440px] z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<script>
+/**
+ * ============================================================================
+ * 1. 글로벌 통화 · 거래소 · 종목 메타데이터
+ * ============================================================================
+ */
+const CURRENCIES = {
+  KRW: { symbol: '₩', name: '한국 원', rate: 1, decimals: 0 },
+  USD: { symbol: '$', name: '미국 달러', rate: 1410.50, decimals: 2 },
+  JPY: { symbol: '¥', name: '일본 엔', rate: 9.12, decimals: 0 },
+  CNY: { symbol: '¥', name: '중국 위안', rate: 194.40, decimals: 2 },
+  HKD: { symbol: 'HK$', name: '홍콩 달러', rate: 179.30, decimals: 2 },
+  GBP: { symbol: '£', name: '영국 파운드', rate: 1788.00, decimals: 2 },
+  EUR: { symbol: '€', name: '유로', rate: 1477.50, decimals: 2 },
+  CAD: { symbol: 'C$', name: '캐나다 달러', rate: 996.80, decimals: 2 },
+  INR: { symbol: '₹', name: '인도 루피', rate: 16.50, decimals: 2 },
+  AUD: { symbol: 'A$', name: '호주 달러', rate: 914.90, decimals: 2 }
+};
+
+const FX_SPREAD_RATE = 0.0025;
+
+const EXCHANGES = {
+  KOSPI:    { name: '코스피', region: 'KR', currency: 'KRW', tz: 'Asia/Seoul',       open: [9,0],  close: [15,30], lunch: null,             buyFee: 0.00015, sellFee: 0.00015, sellTax: 0.0018,   buyTax: 0,      lot: 1 },
+  KOSDAQ:   { name: '코스닥', region: 'KR', currency: 'KRW', tz: 'Asia/Seoul',       open: [9,0],  close: [15,30], lunch: null,             buyFee: 0.00015, sellFee: 0.00015, sellTax: 0.0018,   buyTax: 0,      lot: 1 },
+  NYSE:     { name: 'NYSE',   region: 'US', currency: 'USD', tz: 'America/New_York', open: [9,30], close: [16,0],  lunch: null,             buyFee: 0.0007,  sellFee: 0.0007,  sellTax: 0.000028, buyTax: 0,      lot: 1 },
+  NASDAQ:   { name: 'NASDAQ', region: 'US', currency: 'USD', tz: 'America/New_York', open: [9,30], close: [16,0],  lunch: null,             buyFee: 0.0007,  sellFee: 0.0007,  sellTax: 0.000028, buyTax: 0,      lot: 1 },
+  TSE:      { name: '도쿄 TSE',region: 'JP', currency: 'JPY', tz: 'Asia/Tokyo',       open: [9,0],  close: [15,30], lunch: [[11,30],[12,30]],buyFee: 0.0010,  sellFee: 0.0010,  sellTax: 0,        buyTax: 0,      lot: 100 },
+  SSE:      { name: '상하이', region: 'CNHK',currency:'CNY', tz: 'Asia/Shanghai',    open: [9,30], close: [15,0],  lunch: [[11,30],[13,0]], buyFee: 0.0008,  sellFee: 0.0008,  sellTax: 0.0005,   buyTax: 0,      lot: 100 },
+  SZSE:     { name: '선전',   region: 'CNHK',currency:'CNY', tz: 'Asia/Shanghai',    open: [9,30], close: [15,0],  lunch: [[11,30],[13,0]], buyFee: 0.0008,  sellFee: 0.0008,  sellTax: 0.0005,   buyTax: 0,      lot: 100 },
+  HKEX:     { name: '홍콩 HKEX',region:'CNHK',currency:'HKD',tz: 'Asia/Hong_Kong',   open: [9,30], close: [16,0],  lunch: [[12,0],[13,0]],  buyFee: 0.0010,  sellFee: 0.0010,  sellTax: 0.0010,   buyTax: 0.0010, lot: 10 },
+  LSE:      { name: '런던 LSE',region: 'EU', currency: 'GBP', tz: 'Europe/London',    open: [8,0],  close: [16,30], lunch: null,             buyFee: 0.0010,  sellFee: 0.0010,  sellTax: 0,        buyTax: 0.0050, lot: 1 },
+  XETRA:    { name: '독일 XETRA',region:'EU',currency: 'EUR', tz: 'Europe/Berlin',    open: [9,0],  close: [17,30], lunch: null,             buyFee: 0.0010,  sellFee: 0.0010,  sellTax: 0,        buyTax: 0,      lot: 1 },
+  EURONEXT: { name: '프랑스 EPA',region:'EU',currency: 'EUR', tz: 'Europe/Paris',     open: [9,0],  close: [17,30], lunch: null,             buyFee: 0.0010,  sellFee: 0.0010,  sellTax: 0,        buyTax: 0.0030, lot: 1 },
+  TSX:      { name: '캐나다 TSX',region:'ETC',currency:'CAD', tz: 'America/Toronto',  open: [9,30], close: [16,0],  lunch: null,             buyFee: 0.0008,  sellFee: 0.0008,  sellTax: 0,        buyTax: 0,      lot: 1 },
+  NSE:      { name: '인도 NSE',region: 'ETC',currency: 'INR', tz: 'Asia/Kolkata',     open: [9,15], close: [15,30], lunch: null,             buyFee: 0.0012,  sellFee: 0.0012,  sellTax: 0.0010,   buyTax: 0.0010, lot: 1 },
+  ASX:      { name: '호주 ASX',region: 'ETC',currency: 'AUD', tz: 'Australia/Sydney', open: [10,0], close: [16,0],  lunch: null,             buyFee: 0.0010,  sellFee: 0.0010,  sellTax: 0,        buyTax: 0,      lot: 1 },
+  CRYPTO:   { name: '코인 24/7',region:'CRYPTO',currency:'USD',tz:'UTC',              open: [0,0],  close: [24,0],  lunch: null,             buyFee: 0.0005,  sellFee: 0.0005,  sellTax: 0,        buyTax: 0,      lot: 0.001 }
+};
+
+const HOLIDAYS_BY_REGION = {
+  KR: ['01-01', '03-01', '05-05', '06-06', '08-15', '10-03', '10-09', '12-25'],
+  US: ['01-01', '07-04', '12-25'],
+  JP: ['01-01', '02-11', '04-29', '05-03', '05-04', '05-05', '11-03', '11-23'],
+  CNHK: ['01-01', '05-01', '07-01', '10-01', '10-02', '10-03', '12-25', '12-26'],
+  EU: ['01-01', '05-01', '12-25', '12-26'],
+  ETC: ['01-01', '12-25'],
+  CRYPTO: []
+};
+
+const INITIAL_STOCKS = [
+  { code: '005930', name: '삼성전자', ex: 'KOSPI', sector: '반도체', price: 73400, vol: 0.013, divYield: 0.021, slug: 'samsung', domain: 'samsung.com' },
+  { code: '000660', name: 'SK하이닉스', ex: 'KOSPI', sector: '반도체', price: 186500, vol: 0.022, divYield: 0.008, slug: 'skhynix', domain: 'skhynix.com' },
+  { code: '005380', name: '현대자동차', ex: 'KOSPI', sector: '자동차', price: 252000, vol: 0.015, divYield: 0.045, slug: 'hyundai', domain: 'hyundai.com' },
+  { code: '035420', name: 'NAVER', ex: 'KOSPI', sector: '인터넷', price: 220500, vol: 0.017, divYield: 0.006, slug: 'naver', domain: 'navercorp.com' },
+  { code: '352820', name: '하이브', ex: 'KOSPI', sector: '엔터', price: 214500, vol: 0.025, divYield: 0.000, slug: '', domain: 'hybecorp.com' },
+  { code: '259960', name: '크래프톤', ex: 'KOSPI', sector: '게임', price: 318000, vol: 0.023, divYield: 0.000, slug: '', domain: 'krafton.com' },
+  { code: '036570', name: '엔씨소프트', ex: 'KOSPI', sector: '게임', price: 196500, vol: 0.024, divYield: 0.011, slug: 'ncsoft', domain: 'ncsoft.com' },
+  { code: '247540', name: '에코프로비엠', ex: 'KOSDAQ', sector: '2차전지', price: 172100, vol: 0.029, divYield: 0.003, slug: '', domain: 'ecoprobm.co.kr' },
+  { code: '196170', name: '알테오젠', ex: 'KOSDAQ', sector: '바이오', price: 367500, vol: 0.031, divYield: 0.000, slug: '', domain: 'alteogen.com' },
+  { code: '035900', name: 'JYP Ent.', ex: 'KOSDAQ', sector: '엔터', price: 61800, vol: 0.022, divYield: 0.011, slug: '', domain: 'jype.com' },
+  { code: '041510', name: '에스엠', ex: 'KOSDAQ', sector: '엔터', price: 82400, vol: 0.025, divYield: 0.014, slug: '', domain: 'smentertainment.com' },
+  { code: '122870', name: '와이지엔터', ex: 'KOSDAQ', sector: '엔터', price: 44600, vol: 0.027, divYield: 0.005, slug: '', domain: 'ygfamily.com' },
+  { code: '263750', name: '펄어비스', ex: 'KOSDAQ', sector: '게임', price: 31400, vol: 0.028, divYield: 0.000, slug: '', domain: 'pearlabyss.com' },
+  { code: 'NVDA', name: 'NVIDIA', ex: 'NASDAQ', sector: 'AI 반도체', price: 151.55, vol: 0.028, divYield: 0.0003, slug: 'nvidia', domain: 'nvidia.com' },
+  { code: 'AAPL', name: 'Apple', ex: 'NASDAQ', sector: '빅테크', price: 227.70, vol: 0.015, divYield: 0.0045, slug: 'apple', domain: 'apple.com' },
+  { code: 'MSFT', name: 'Microsoft', ex: 'NASDAQ', sector: '클라우드', price: 426.40, vol: 0.014, divYield: 0.0075, slug: 'microsoft', domain: 'microsoft.com' },
+  { code: 'TSLA', name: 'Tesla', ex: 'NASDAQ', sector: '전기차/AI', price: 324.20, vol: 0.034, divYield: 0.000, slug: 'tesla', domain: 'tesla.com' },
+  { code: 'NFLX', name: 'Netflix', ex: 'NASDAQ', sector: 'OTT', price: 824.50, vol: 0.022, divYield: 0.000, slug: 'netflix', domain: 'netflix.com' },
+  { code: 'EA', name: 'Electronic Arts', ex: 'NASDAQ', sector: '게임', price: 158.40, vol: 0.017, divYield: 0.004, slug: 'ea', domain: 'ea.com' },
+  { code: 'BRK.B', name: 'Berkshire Hathaway', ex: 'NYSE', sector: '금융/지주', price: 468.90, vol: 0.010, divYield: 0.000, slug: '', domain: 'berkshirehathaway.com' },
+  { code: 'DIS', name: 'Walt Disney', ex: 'NYSE', sector: '미디어', price: 112.40, vol: 0.018, divYield: 0.006, slug: '', domain: 'thewaltdisneycompany.com' },
+  { code: 'SPOT', name: 'Spotify', ex: 'NYSE', sector: '음악/스트리밍', price: 462.80, vol: 0.026, divYield: 0.000, slug: 'spotify', domain: 'spotify.com' },
+  { code: 'RBLX', name: 'Roblox', ex: 'NYSE', sector: '게임/메타버스', price: 52.40, vol: 0.031, divYield: 0.000, slug: 'roblox', domain: 'roblox.com' },
+  { code: '7203.T', name: 'Toyota Motor', ex: 'TSE', sector: '자동차', price: 2772, vol: 0.015, divYield: 0.028, slug: 'toyota', domain: 'global.toyota' },
+  { code: '6758.T', name: 'Sony Group', ex: 'TSE', sector: '전자/엔터', price: 2980, vol: 0.019, divYield: 0.007, slug: 'sony', domain: 'sony.com' },
+  { code: '7974.T', name: 'Nintendo', ex: 'TSE', sector: '게임', price: 8200, vol: 0.019, divYield: 0.026, slug: 'nintendo', domain: 'nintendo.co.jp' },
+  { code: '9697.T', name: 'Capcom', ex: 'TSE', sector: '게임', price: 3420, vol: 0.021, divYield: 0.016, slug: '', domain: 'capcom.co.jp' },
+  { code: '600519.SS', name: '귀주모태주 (Moutai)', ex: 'SSE', sector: '소비재', price: 1568.00, vol: 0.016, divYield: 0.022, slug: '', domain: 'moutaichina.com' },
+  { code: '300750.SZ', name: 'CATL (닝더스다이)', ex: 'SZSE', sector: '배터리', price: 264.50, vol: 0.026, divYield: 0.018, slug: '', domain: 'catl.com' },
+  { code: '0700.HK', name: 'Tencent (텐센트)', ex: 'HKEX', sector: '플랫폼/게임', price: 412.60, vol: 0.021, divYield: 0.009, slug: 'tencentqq', domain: 'tencent.com' },
+  { code: '9988.HK', name: 'Alibaba (알리바바)', ex: 'HKEX', sector: '커머스/AI', price: 94.80, vol: 0.024, divYield: 0.012, slug: 'alibabadotcom', domain: 'alibabagroup.com' },
+  { code: '9999.HK', name: 'NetEase (넷이즈)', ex: 'HKEX', sector: '게임', price: 168.40, vol: 0.026, divYield: 0.018, slug: 'netease', domain: '163.com' },
+  { code: 'MC.PA', name: 'LVMH', ex: 'EURONEXT', sector: '럭셔리', price: 618.40, vol: 0.019, divYield: 0.021, slug: 'lvmh', domain: 'lvmh.com' },
+  { code: 'RMS.PA', name: 'Hermès', ex: 'EURONEXT', sector: '명품', price: 2085.00, vol: 0.016, divYield: 0.008, slug: 'hermes', domain: 'hermes.com' },
+  { code: 'SAP.DE', name: 'SAP SE', ex: 'XETRA', sector: '소프트웨어', price: 224.50, vol: 0.016, divYield: 0.010, slug: 'sap', domain: 'sap.com' },
+  { code: 'AZN.L', name: 'AstraZeneca', ex: 'LSE', sector: '제약/바이오', price: 106.40, vol: 0.015, divYield: 0.022, slug: '', domain: 'astrazeneca.com' },
+  { code: 'SHOP.TO', name: 'Shopify', ex: 'TSX', sector: '이커머스', price: 148.60, vol: 0.027, divYield: 0.000, slug: 'shopify', domain: 'shopify.com' },
+  { code: 'TCS.NS', name: 'Tata Consultancy', ex: 'NSE', sector: 'IT서비스', price: 4142.00, vol: 0.015, divYield: 0.014, slug: 'tata', domain: 'tcs.com' },
+  { code: 'BHP.AX', name: 'BHP Group', ex: 'ASX', sector: '광업/자원', price: 40.65, vol: 0.017, divYield: 0.054, slug: '', domain: 'bhp.com' },
+  { code: 'BTC', name: 'Bitcoin', ex: 'CRYPTO', sector: '암호화폐', price: 68420.00, vol: 0.032, divYield: 0.000, slug: 'bitcoin', domain: 'bitcoin.org' },
+  { code: 'ETH', name: 'Ethereum', ex: 'CRYPTO', sector: '암호화폐', price: 3520.00, vol: 0.038, divYield: 0.000, slug: 'ethereum', domain: 'ethereum.org' },
+  { code: 'SOL', name: 'Solana', ex: 'CRYPTO', sector: '암호화폐', price: 154.20, vol: 0.048, divYield: 0.000, slug: 'solana', domain: 'solana.com' },
+  { code: 'DOGE', name: 'Dogecoin', ex: 'CRYPTO', sector: '암호화폐', price: 0.1425, vol: 0.065, divYield: 0.000, slug: 'dogecoin', domain: 'dogecoin.com' },
+  { code: 'XRP', name: 'XRP', ex: 'CRYPTO', sector: '암호화폐', price: 0.5840, vol: 0.045, divYield: 0.000, slug: 'xrp', domain: 'ripple.com' },
+  { code: 'SPY', name: 'SPDR S&P 500 ETF', ex: 'NYSE', sector: 'ETF·미국 대표지수', price: 590.00, vol: 0.012, divYield: 0.013, slug: '', domain: 'ssga.com' },
+  { code: 'QQQ', name: 'Invesco QQQ ETF', ex: 'NASDAQ', sector: 'ETF·나스닥100', price: 510.00, vol: 0.016, divYield: 0.006, slug: '', domain: 'invesco.com' },
+  { code: 'VOO', name: 'Vanguard S&P 500 ETF', ex: 'NYSE', sector: 'ETF·미국 대표지수', price: 540.00, vol: 0.011, divYield: 0.013, slug: '', domain: 'vanguard.com' },
+  { code: 'SCHD', name: 'Schwab US Dividend ETF', ex: 'NYSE', sector: 'ETF·배당', price: 27.50, vol: 0.010, divYield: 0.035, slug: '', domain: 'schwabassetmanagement.com' },
+  { code: '000270', name: '기아', ex: 'KOSPI', sector: '자동차', price: 103500, vol: 0.017, divYield: 0.035, slug: '', domain: 'kia.com' },
+  { code: '006400', name: '삼성SDI', ex: 'KOSPI', sector: '2차전지', price: 298000, vol: 0.026, divYield: 0.012, slug: 'samsung', domain: 'samsung.com' },
+  { code: '105560', name: 'KB금융', ex: 'KOSPI', sector: '금융', price: 84500, vol: 0.016, divYield: 0.045, slug: '', domain: 'kbfg.com' },
+  { code: '055550', name: '신한지주', ex: 'KOSPI', sector: '금융', price: 52300, vol: 0.015, divYield: 0.046, slug: '', domain: 'shinhangroup.com' },
+  { code: '068270', name: '셀트리온', ex: 'KOSPI', sector: '바이오', price: 178000, vol: 0.021, divYield: 0.002, slug: '', domain: 'celltrion.com' },
+  { code: '012330', name: '현대모비스', ex: 'KOSPI', sector: '자동차부품', price: 245000, vol: 0.014, divYield: 0.022, slug: '', domain: 'mobis.com' },
+  { code: '086520', name: '에코프로', ex: 'KOSDAQ', sector: '2차전지', price: 68500, vol: 0.032, divYield: 0.000, slug: '', domain: 'ecopro.co.kr' },
+  { code: '066970', name: '엘앤에프', ex: 'KOSDAQ', sector: '2차전지', price: 92000, vol: 0.031, divYield: 0.000, slug: '', domain: 'landf.co.kr' },
+  { code: '293490', name: '카카오게임즈', ex: 'KOSDAQ', sector: '게임', price: 21800, vol: 0.027, divYield: 0.000, slug: '', domain: 'kakaogames.com' },
+  { code: 'AMZN', name: 'Amazon', ex: 'NASDAQ', sector: '이커머스/클라우드', price: 214.00, vol: 0.019, divYield: 0.000, slug: 'amazon', domain: 'amazon.com' },
+  { code: 'GOOGL', name: 'Alphabet A', ex: 'NASDAQ', sector: '빅테크/광고', price: 176.00, vol: 0.017, divYield: 0.004, slug: 'google', domain: 'abc.xyz' },
+  { code: 'META', name: 'Meta Platforms', ex: 'NASDAQ', sector: '소셜미디어/AI', price: 585.00, vol: 0.021, divYield: 0.003, slug: 'meta', domain: 'about.meta.com' },
+  { code: 'AVGO', name: 'Broadcom', ex: 'NASDAQ', sector: '반도체/인프라', price: 185.00, vol: 0.025, divYield: 0.010, slug: '', domain: 'broadcom.com' },
+  { code: 'AMD', name: 'AMD', ex: 'NASDAQ', sector: '반도체', price: 138.00, vol: 0.030, divYield: 0.000, slug: 'amd', domain: 'amd.com' },
+  { code: 'INTC', name: 'Intel', ex: 'NASDAQ', sector: '반도체', price: 24.50, vol: 0.028, divYield: 0.000, slug: 'intel', domain: 'intel.com' },
+  { code: 'ORCL', name: 'Oracle', ex: 'NYSE', sector: '클라우드/소프트웨어', price: 168.00, vol: 0.020, divYield: 0.010, slug: 'oracle', domain: 'oracle.com' },
+  { code: 'JPM', name: 'JPMorgan Chase', ex: 'NYSE', sector: '금융', price: 245.00, vol: 0.014, divYield: 0.020, slug: '', domain: 'jpmorganchase.com' },
+  { code: 'KO', name: 'Coca-Cola', ex: 'NYSE', sector: '필수소비재', price: 70.00, vol: 0.009, divYield: 0.030, slug: 'cocacola', domain: 'coca-colacompany.com' },
+  { code: 'WMT', name: 'Walmart', ex: 'NASDAQ', sector: '유통', price: 96.00, vol: 0.012, divYield: 0.010, slug: 'walmart', domain: 'walmart.com' },
+  { code: 'COST', name: 'Costco', ex: 'NASDAQ', sector: '유통', price: 980.00, vol: 0.014, divYield: 0.005, slug: 'costco', domain: 'costco.com' },
+  { code: 'PLTR', name: 'Palantir', ex: 'NASDAQ', sector: 'AI 소프트웨어', price: 118.00, vol: 0.040, divYield: 0.000, slug: '', domain: 'palantir.com' },
+  { code: '9984.T', name: 'SoftBank Group', ex: 'TSE', sector: '투자/기술', price: 10200, vol: 0.026, divYield: 0.004, slug: '', domain: 'group.softbank' },
+  { code: '8035.T', name: 'Tokyo Electron', ex: 'TSE', sector: '반도체 장비', price: 24500, vol: 0.025, divYield: 0.012, slug: '', domain: 'tel.com' },
+  { code: '6861.T', name: 'Keyence', ex: 'TSE', sector: '자동화/센서', price: 61000, vol: 0.016, divYield: 0.006, slug: '', domain: 'keyence.com' },
+  { code: '3690.HK', name: 'Meituan', ex: 'HKEX', sector: '배달/플랫폼', price: 132.00, vol: 0.030, divYield: 0.000, slug: '', domain: 'meituan.com' },
+  { code: '1810.HK', name: 'Xiaomi', ex: 'HKEX', sector: '스마트폰/전기차', price: 48.00, vol: 0.032, divYield: 0.000, slug: '', domain: 'mi.com' },
+  { code: '9618.HK', name: 'JD.com', ex: 'HKEX', sector: '이커머스', price: 142.00, vol: 0.025, divYield: 0.015, slug: '', domain: 'jd.com' },
+  { code: '1024.HK', name: 'Kuaishou', ex: 'HKEX', sector: '숏폼/플랫폼', price: 52.00, vol: 0.031, divYield: 0.000, slug: '', domain: 'kuaishou.com' },
+  { code: 'ASML.AS', name: 'ASML', ex: 'EURONEXT', sector: '반도체 장비', price: 720.00, vol: 0.023, divYield: 0.008, slug: '', domain: 'asml.com' },
+  { code: 'AIR.PA', name: 'Airbus', ex: 'EURONEXT', sector: '항공우주', price: 168.00, vol: 0.017, divYield: 0.015, slug: '', domain: 'airbus.com' },
+  { code: 'SIE.DE', name: 'Siemens', ex: 'XETRA', sector: '산업/자동화', price: 220.00, vol: 0.016, divYield: 0.025, slug: '', domain: 'siemens.com' },
+  { code: 'DIA', name: 'SPDR Dow Jones ETF', ex: 'NYSE', sector: 'ETF·다우존스', price: 430.00, vol: 0.010, divYield: 0.015, slug: '', domain: 'ssga.com' },
+  { code: 'IWM', name: 'iShares Russell 2000 ETF', ex: 'NYSE', sector: 'ETF·미국 중소형주', price: 220.00, vol: 0.016, divYield: 0.013, slug: '', domain: 'ishares.com' },
+  { code: 'EFA', name: 'iShares MSCI EAFE ETF', ex: 'NYSE', sector: 'ETF·선진국 글로벌', price: 82.00, vol: 0.011, divYield: 0.028, slug: '', domain: 'ishares.com' },
+  { code: 'EEM', name: 'iShares Emerging Markets ETF', ex: 'NYSE', sector: 'ETF·신흥국', price: 43.00, vol: 0.014, divYield: 0.025, slug: '', domain: 'ishares.com' },
+  { code: 'VTI', name: 'Vanguard Total US Market ETF', ex: 'NYSE', sector: 'ETF·미국 전체시장', price: 300.00, vol: 0.011, divYield: 0.013, slug: '', domain: 'vanguard.com' },
+  { code: 'XLK', name: 'Technology Select Sector ETF', ex: 'NYSE', sector: 'ETF·기술주', price: 225.00, vol: 0.016, divYield: 0.007, slug: '', domain: 'ssga.com' },
+  { code: 'XLE', name: 'Energy Select Sector ETF', ex: 'NYSE', sector: 'ETF·에너지', price: 90.00, vol: 0.018, divYield: 0.032, slug: '', domain: 'ssga.com' },
+  { code: 'TLT', name: 'iShares 20+ Year Treasury ETF', ex: 'NASDAQ', sector: 'ETF·미국 장기국채', price: 88.00, vol: 0.014, divYield: 0.040, slug: '', domain: 'ishares.com' },
+  { code: 'GLD', name: 'SPDR Gold Shares', ex: 'NYSE', sector: 'ETF·금', price: 285.00, vol: 0.012, divYield: 0.000, slug: '', domain: 'ssga.com' },
+  { code: 'SLV', name: 'iShares Silver Trust', ex: 'NYSE', sector: 'ETF·은', price: 30.00, vol: 0.022, divYield: 0.000, slug: '', domain: 'ishares.com' },
+  { code: 'USO', name: 'United States Oil Fund', ex: 'NYSE', sector: 'ETF·원유 선물', price: 72.00, vol: 0.030, divYield: 0.000, slug: '', domain: 'uscfinvestments.com' },
+  { code: 'BNB', name: 'BNB', ex: 'CRYPTO', sector: '암호화폐', price: 610.00, vol: 0.030, divYield: 0.000, slug: '', domain: 'bnbchain.org' },
+  { code: 'ADA', name: 'Cardano', ex: 'CRYPTO', sector: '암호화폐', price: 0.72, vol: 0.045, divYield: 0.000, slug: '', domain: 'cardano.org' },
+  { code: 'AVAX', name: 'Avalanche', ex: 'CRYPTO', sector: '암호화폐', price: 36.00, vol: 0.050, divYield: 0.000, slug: '', domain: 'avax.network' },
+  { code: 'LINK', name: 'Chainlink', ex: 'CRYPTO', sector: '암호화폐', price: 18.00, vol: 0.045, divYield: 0.000, slug: '', domain: 'chain.link' },
+  { code: 'LTC', name: 'Litecoin', ex: 'CRYPTO', sector: '암호화폐', price: 95.00, vol: 0.035, divYield: 0.000, slug: '', domain: 'litecoin.org' },
+  { code: 'DOT', name: 'Polkadot', ex: 'CRYPTO', sector: '암호화폐', price: 7.20, vol: 0.048, divYield: 0.000, slug: '', domain: 'polkadot.com' }
+];
+
+function getCompanyLogoHtml(stock, sizeClass = '') {
+  if (stock.ex === 'CRYPTO') {
+    const colors = { BTC: '#f7931a', ETH: '#627eea', SOL: '#14f195', DOGE: '#c2a633', XRP: '#23292f' };
+    const bg = colors[stock.code] || '#f7931a';
+    const txtColor = stock.code === 'SOL' ? '#0f172a' : '#ffffff';
+    return `<div class="company-badge ${sizeClass}" style="background:${bg};border:none;">
+      <span style="color:${txtColor};font-size:10px;">${stock.code}</span>
+    </div>`;
+  }
+  const tickerShort = (stock.code || '').split('.')[0].slice(0, 4);
+  const faviconUrl = stock.domain ? `https://www.google.com/s2/favicons?domain=${stock.domain}&sz=128` : '';
+  const primaryUrl = stock.slug ? `https://cdn.simpleicons.org/${stock.slug}` : faviconUrl;
+  if (!primaryUrl) {
+    return `<div class="company-badge ${sizeClass}"><span>${tickerShort}</span></div>`;
+  }
+  const onErrorAttr = stock.slug && faviconUrl
+    ? `if(!this.dataset.tried){this.dataset.tried='1';this.src='${faviconUrl}';}else{this.parentElement.innerHTML='<span>${tickerShort}</span>';}`
+    : `this.parentElement.innerHTML='<span>${tickerShort}</span>';`;
+  return `<div class="company-badge ${sizeClass}">
+    <img src="${primaryUrl}" alt="${stock.name}" loading="lazy" onerror="${onErrorAttr}">
+  </div>`;
+}
+
+/**
+ * ============================================================================
+ * 2. 회원 계정 및 상태 관리
+ * ============================================================================
+ */
+const DEFAULT_SEED_KRW = 10000000;
+const MEMBERS_DB_KEY = 'marketdesk_v3_members';
+const SESSION_KEY = 'marketdesk_v3_active_user';
+const TUTORIAL_DONE_KEY = 'marketdesk_mobile_tut_done';
+
+function getMembersDb() {
+  try { return JSON.parse(localStorage.getItem(MEMBERS_DB_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveMembersDb(db) {
+  try { localStorage.setItem(MEMBERS_DB_KEY, JSON.stringify(db)); } catch (e) {}
+}
+
+let activeUserId = localStorage.getItem(SESSION_KEY) || 'guest';
+function getStorageKeyForUser(userId) {
+  return `marketdesk_v3_portfolio_${userId || 'guest'}`;
+}
+
+let state = loadState();
+let ui = {
+  mobileTab: 'market',
+  selectedCode: 'NVDA',
+  regionFilter: 'ALL',
+  exchangeFilter: 'ALL',
+  searchQuery: '',
+  timeframe: '1D',
+  orderSide: 'buy',
+  orderType: 'LIMIT',
+  bottomTab: 'holdings',
+  speed: 1,
+  hoverCandleIdx: -1
+};
+
+function buildInitialCandles(basePrice, vol, count = 60) {
+  const candles = [];
+  let price = basePrice * (1 - vol * 1.8);
+  for (let i = 0; i < count; i++) {
+    const drift = (Math.random() - 0.48) * vol * 1.35;
+    const open = price;
+    const close = Math.max(0.0001, open * (1 + drift));
+    const high = Math.max(open, close) * (1 + Math.random() * vol * 0.6);
+    const low = Math.min(open, close) * (1 - Math.random() * vol * 0.6);
+    const volume = Math.round((45000 + Math.random() * 170000) * (1 + Math.abs(drift) * 30));
+    candles.push({ open, high, low, close, volume });
+    price = close;
+  }
+  if (candles.length > 0) {
+    candles[candles.length - 1].close = basePrice;
+    candles[candles.length - 1].high = Math.max(candles[candles.length - 1].high, basePrice);
+    candles[candles.length - 1].low = Math.min(candles[candles.length - 1].low, basePrice);
+  }
+  return candles;
+}
+
+function createFreshState(customSeedKrw = DEFAULT_SEED_KRW) {
+  const seed = Number(customSeedKrw) || DEFAULT_SEED_KRW;
+  const stocks = INITIAL_STOCKS.map(s => {
+    const candles = buildInitialCandles(s.price, s.vol, 60);
+    const prevClose = candles[candles.length - 2]?.close || s.price;
+    const dayOpen = candles[candles.length - 1]?.open || s.price;
+    const dayHigh = Math.max(dayOpen, s.price) * (1 + s.vol * 0.2);
+    const dayLow = Math.min(dayOpen, s.price) * (1 - s.vol * 0.2);
+    return {
+      ...s, prevClose, dayOpen, dayHigh, dayLow,
+      dayVolume: Math.round(1400000 + Math.random() * 7500000),
+      candles
+    };
+  });
+  return {
+    initialSeedKrw: seed,
+    simTimeMs: new Date('2026-11-18T10:15:00+09:00').getTime(),
+    isHolidayOverride: false,
+    autoFx: true,
+    cashKrw: seed,
+    fxWallets: { USD: 0, JPY: 0, CNY: 0, HKD: 0, GBP: 0, EUR: 0, CAD: 0, INR: 0, AUD: 0 },
+    holdings: {},
+    openOrders: [],
+    logs: [],
+    watchlist: ['005930', '000660', 'NVDA', 'AAPL', 'BTC', 'ETH'],
+    realizedPnlKrw: 0,
+    dividendTotalKrw: 0,
+    feesTotalKrw: 0,
+    winTrades: 0,
+    lossTrades: 0,
+    stocks
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(getStorageKeyForUser(activeUserId));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.stocks) && parsed.stocks.length >= 30) {
+        const metaMap = new Map(INITIAL_STOCKS.map(x => [x.code, x]));
+        parsed.stocks.forEach(s => {
+          const m = metaMap.get(s.code);
+          if (m) { s.slug = m.slug; s.domain = m.domain; }
+        });
+        parsed.initialSeedKrw = parsed.initialSeedKrw || DEFAULT_SEED_KRW;
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return createFreshState(DEFAULT_SEED_KRW);
+}
+
+function saveState() {
+  try { localStorage.setItem(getStorageKeyForUser(activeUserId), JSON.stringify(state)); } catch (e) {}
+}
+
+/**
+ * ============================================================================
+ * 3. 모바일 화면 전환 & 바텀 시트 제어
+ * ============================================================================
+ */
+function setMobileTab(tabName) {
+  ui.mobileTab = tabName;
+  document.querySelectorAll('.mobile-view').forEach(v => v.classList.remove('active'));
+  const targetView = document.getElementById(`view-${tabName}`);
+  if (targetView) targetView.classList.add('active');
+
+  document.querySelectorAll('.mtab-btn').forEach(btn => {
+    const active = btn.dataset.mtab === tabName;
+    btn.className = `mtab-btn py-2 flex flex-col items-center gap-0.5 relative ${active ? 'text-[#60a5fa]' : 'text-[#8494ac]'}`;
+  });
+
+  if (tabName === 'chart') {
+    setTimeout(renderCandlestickChart, 40);
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openMobileOrderSide(side) {
+  ui.orderSide = side;
+  updateSideButtonsUI();
+  setMobileTab('order');
+  updateOrderPanelEstimates();
+}
+
+function openBottomSheet(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('open');
+}
+
+function closeAllSheets() {
+  document.querySelectorAll('.bottom-sheet-backdrop').forEach(el => el.classList.remove('open'));
+}
+
+/**
+ * ============================================================================
+ * 4. 거래소 개장 시간 / 호가 / 정산 계산
+ * ============================================================================
+ */
+function getExchangeParts(exCode, timestampMs = state.simTimeMs) {
+  const ex = EXCHANGES[exCode];
+  const date = new Date(timestampMs);
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: ex.tz, weekday: 'short', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+  const parts = {};
+  fmt.formatToParts(date).forEach(p => { parts[p.type] = p.value; });
+  const hour = Number(parts.hour === '24' ? 0 : parts.hour);
+  const minute = Number(parts.minute);
+  return { weekday: parts.weekday, mmdd: `${parts.month}-${parts.day}`, hour, minute, totalMins: hour * 60 + minute };
+}
+
+function getExchangeStatus(exCode, timestampMs = state.simTimeMs) {
+  const ex = EXCHANGES[exCode];
+  if (ex.region === 'CRYPTO') {
+    return { isOpen: true, label: '24/7 거래중', badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30' };
+  }
+  const p = getExchangeParts(exCode, timestampMs);
+  if (state.isHolidayOverride || (HOLIDAYS_BY_REGION[ex.region] || []).includes(p.mmdd)) {
+    return { isOpen: false, label: '휴장일', badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30' };
+  }
+  if (p.weekday === 'Sat' || p.weekday === 'Sun') {
+    return { isOpen: false, label: '주말 휴장', badgeClass: 'bg-slate-700/40 text-slate-300 border-slate-600' };
+  }
+  const openMins = ex.open[0] * 60 + ex.open[1];
+  const closeMins = ex.close[0] * 60 + ex.close[1];
+  if (ex.lunch) {
+    const lStart = ex.lunch[0][0] * 60 + ex.lunch[0][1];
+    const lEnd = ex.lunch[1][0] * 60 + ex.lunch[1][1];
+    if (p.totalMins >= lStart && p.totalMins < lEnd) {
+      return { isOpen: false, label: '점심 휴장', badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30' };
+    }
+  }
+  if (p.totalMins >= openMins && p.totalMins < closeMins) {
+    return { isOpen: true, label: '정규장 개장', badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' };
+  }
+  return { isOpen: false, label: '장 마감', badgeClass: 'bg-slate-700/40 text-slate-300 border-slate-600' };
+}
+
+function getExchangeLocalTimeStr(exCode) {
+  const ex = EXCHANGES[exCode];
+  if (ex.region === 'CRYPTO') return 'UTC 24시간';
+  const p = getExchangeParts(exCode);
+  return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')} (${ex.tz.split('/')[1].replace('_', ' ')})`;
+}
+
+function getStock(code) {
+  return state.stocks.find(s => s.code === code) || state.stocks[0];
+}
+
+function getTickSize(price, currency, isCrypto = false) {
+  if (isCrypto) {
+    if (price < 1) return 0.0001;
+    if (price < 10) return 0.001;
+    if (price < 100) return 0.01;
+    if (price < 1000) return 0.1;
+    return 1;
+  }
+  if (currency === 'KRW') {
+    if (price < 2000) return 1;
+    if (price < 5000) return 5;
+    if (price < 20000) return 10;
+    if (price < 50000) return 50;
+    if (price < 200000) return 100;
+    if (price < 500000) return 500;
+    return 1000;
+  }
+  if (currency === 'JPY') {
+    if (price < 3000) return 1;
+    if (price < 5000) return 5;
+    return 10;
+  }
+  return price >= 100 ? 0.05 : 0.01;
+}
+
+function roundToTick(price, currency, isCrypto = false) {
+  const tick = getTickSize(price, currency, isCrypto);
+  const rounded = Math.round(price / tick) * tick;
+  let dec = CURRENCIES[currency].decimals;
+  if (isCrypto) dec = price < 1 ? 4 : price < 100 ? 3 : 2;
+  return Number(Math.max(tick, rounded).toFixed(dec));
+}
+
+function formatNative(amount, currency, isCrypto = false) {
+  const cur = CURRENCIES[currency] || CURRENCIES.KRW;
+  let dec = cur.decimals;
+  if (isCrypto || (currency === 'USD' && amount > 0 && amount < 10 && !Number.isInteger(amount))) {
+    dec = amount < 1 ? 4 : 2;
+  }
+  return cur.symbol + amount.toLocaleString('ko-KR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+
+function formatKrw(amount) {
+  return '₩' + Math.round(amount).toLocaleString('ko-KR');
+}
+function formatSignedKrw(amount) {
+  const sign = amount > 0 ? '+' : amount < 0 ? '-' : '';
+  return `${sign}₩${Math.abs(Math.round(amount)).toLocaleString('ko-KR')}`;
+}
+function formatPct(pct) {
+  return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+}
+function formatQtyText(qty, isCrypto) {
+  return isCrypto ? `${Number(qty.toFixed(4))}개` : `${Math.floor(qty).toLocaleString()}주`;
+}
+
+function calculateOrderBreakdown(stock, side, execPrice, qty) {
+  const ex = EXCHANGES[stock.ex];
+  const cur = CURRENCIES[ex.currency];
+  const grossNative = execPrice * qty;
+  const feeRate = side === 'buy' ? ex.buyFee : ex.sellFee;
+  const taxRate = side === 'buy' ? ex.buyTax : ex.sellTax;
+
+  const feeNative = grossNative * feeRate;
+  const taxNative = grossNative * taxRate;
+  const netNative = side === 'buy'
+    ? grossNative + feeNative + taxNative
+    : Math.max(0, grossNative - feeNative - taxNative);
+
+  let fxSpreadKrw = 0;
+  let effectiveRate = cur.rate;
+  if (ex.currency !== 'KRW') {
+    if (side === 'buy') {
+      const walletBal = state.fxWallets[ex.currency] || 0;
+      const needConvertNative = Math.max(0, netNative - walletBal);
+      fxSpreadKrw = needConvertNative * cur.rate * FX_SPREAD_RATE;
+      effectiveRate = cur.rate * (1 + FX_SPREAD_RATE);
+    } else {
+      fxSpreadKrw = netNative * cur.rate * FX_SPREAD_RATE;
+      effectiveRate = cur.rate * (1 - FX_SPREAD_RATE);
+    }
+  }
+  const feeTaxKrw = (feeNative + taxNative) * cur.rate + fxSpreadKrw;
+  const totalKrw = side === 'buy'
+    ? (grossNative * cur.rate) + feeTaxKrw
+    : Math.max(0, (grossNative * cur.rate) - feeTaxKrw);
+
+  return { currency: ex.currency, grossNative, netNative, feeTaxKrw, totalKrw, effectiveRate };
+}
+
+/**
+ * ============================================================================
+ * 5. 주문 실행 & 체결 엔진
+ * ============================================================================
+ */
+function getReservedBuyKrw(excludeOrderId = null, currencyFilter = null) {
+  return state.openOrders
+    .filter(o => o.side === 'buy' && o.id !== excludeOrderId)
+    .reduce((sum, o) => {
+      const s = getStock(o.code);
+      const ex = EXCHANGES[s.ex];
+      if (currencyFilter && ex.currency !== currencyFilter) return sum;
+      const cur = CURRENCIES[ex.currency];
+      const gross = o.price * o.qty;
+      const fees = gross * (ex.buyFee + ex.buyTax);
+      const fx = ex.currency === 'KRW' ? 0 : gross * cur.rate * FX_SPREAD_RATE;
+      return sum + gross * cur.rate + fees * cur.rate + fx;
+    }, 0);
+}
+
+function getAvailableBuyingPowerKrw(currency = 'KRW') {
+  if (currency === 'KRW') return Math.max(0, state.cashKrw - getReservedBuyKrw());
+  const walletValue = (state.fxWallets[currency] || 0) * CURRENCIES[currency].rate;
+  if (!state.autoFx) return Math.max(0, walletValue - getReservedBuyKrw(null, currency));
+  const allWalletValue = Object.entries(state.fxWallets).reduce((sum, [c, amount]) => sum + amount * (CURRENCIES[c]?.rate || 0), 0);
+  return Math.max(0, state.cashKrw + allWalletValue - getReservedBuyKrw());
+}
+
+function placeOrder() {
+  const stock = getStock(ui.selectedCode);
+  const ex = EXCHANGES[stock.ex];
+  const isCrypto = ex.region === 'CRYPTO';
+  let qty = Number(document.getElementById('orderQtyInput').value) || 0;
+  if (!isCrypto) qty = Math.floor(qty);
+
+  const inputPrice = Number(document.getElementById('orderPriceInput').value) || stock.price;
+  const execPrice = ui.orderType === 'MARKET' ? stock.price : roundToTick(inputPrice, ex.currency, isCrypto);
+
+  if (qty <= 0 || (!isCrypto && qty % ex.lot !== 0) || (isCrypto && qty < ex.lot)) {
+    pushToast('주문 수량 오류', `${ex.name} 최소 ${ex.lot}${isCrypto ? '개' : '주'} 단위로 입력하세요.`, 'down');
+    return;
+  }
+
+  const est = calculateOrderBreakdown(stock, ui.orderSide, execPrice, qty);
+  const hold = state.holdings[stock.code] || { qty: 0, avgNative: 0, totalCostKrw: 0 };
+
+  if (ui.orderSide === 'buy') {
+    const totalAvailKrw = getAvailableBuyingPowerKrw(ex.currency);
+    if (est.totalKrw > totalAvailKrw + 1) {
+      pushToast('잔액 부족', `필요 ${formatKrw(est.totalKrw)} / 가능 ${formatKrw(totalAvailKrw)}`, 'down');
+      return;
+    }
+  } else {
+    const reservedSellQty = state.openOrders.filter(o => o.code === stock.code && o.side === 'sell').reduce((acc, o) => acc + o.qty, 0);
+    if (qty + reservedSellQty > hold.qty + 1e-8) {
+      pushToast('매도 수량 부족', `보유 ${formatQtyText(hold.qty, isCrypto)}`, 'down');
+      return;
+    }
+  }
+
+  const status = getExchangeStatus(stock.ex);
+  const canFillNow = status.isOpen && (
+    ui.orderType === 'MARKET' ||
+    (ui.orderSide === 'buy' && execPrice >= stock.price) ||
+    (ui.orderSide === 'sell' && execPrice <= stock.price)
+  );
+
+  if (canFillNow) {
+    executeFilledOrder(stock, ui.orderSide, execPrice, qty, ui.orderType);
+  } else {
+    const orderId = 'ORD-' + Date.now().toString(36).toUpperCase();
+    state.openOrders.unshift({
+      id: orderId, code: stock.code, side: ui.orderSide, type: ui.orderType,
+      price: execPrice, qty, createdAtStr: formatSimClockShort()
+    });
+    pushToast(`📌 미체결 예약 (${stock.name})`, `${ui.orderSide === 'buy' ? '매수' : '매도'} ${formatQtyText(qty, isCrypto)} @ ${formatNative(execPrice, ex.currency, isCrypto)}`, 'neutral');
+    saveState();
+    renderAll();
+  }
+}
+
+function executeFilledOrder(stock, side, fillPrice, qty, orderType = 'LIMIT') {
+  const ex = EXCHANGES[stock.ex];
+  const isCrypto = ex.region === 'CRYPTO';
+  const cur = CURRENCIES[ex.currency];
+  const bd = calculateOrderBreakdown(stock, side, fillPrice, qty);
+  const hold = state.holdings[stock.code] || { qty: 0, avgNative: 0, totalCostKrw: 0 };
+
+  if (side === 'buy') {
+    if (ex.currency === 'KRW') {
+      if (state.cashKrw < bd.totalKrw - 1) return false;
+      state.cashKrw -= bd.totalKrw;
+    } else {
+      const wallet = state.fxWallets[ex.currency] || 0;
+      const useWallet = Math.min(wallet, bd.netNative);
+      const remainNative = bd.netNative - useWallet;
+      if (!state.autoFx && remainNative > 1e-8) return false;
+      const needKrw = remainNative * cur.rate * (1 + FX_SPREAD_RATE);
+      if (state.cashKrw < needKrw - 1) return false;
+      state.fxWallets[ex.currency] = wallet - useWallet;
+      state.cashKrw -= needKrw;
+    }
+    const newQty = hold.qty + qty;
+    const newAvgNative = ((hold.qty * hold.avgNative) + bd.netNative) / newQty;
+    state.holdings[stock.code] = { qty: newQty, avgNative: newAvgNative, totalCostKrw: hold.totalCostKrw + bd.totalKrw };
+  } else {
+    if (hold.qty + 1e-8 < qty) return false;
+    const costRatio = Math.min(1, qty / hold.qty);
+    const soldCostKrw = hold.totalCostKrw * costRatio;
+    const realized = bd.totalKrw - soldCostKrw;
+    state.realizedPnlKrw += realized;
+    if (realized >= 0) state.winTrades++; else state.lossTrades++;
+
+    if (ex.currency === 'KRW' || state.autoFx) state.cashKrw += bd.totalKrw;
+    else state.fxWallets[ex.currency] = (state.fxWallets[ex.currency] || 0) + bd.netNative;
+
+    const remainQty = hold.qty - qty;
+    if (remainQty <= 1e-7) delete state.holdings[stock.code];
+    else state.holdings[stock.code] = { qty: remainQty, avgNative: hold.avgNative, totalCostKrw: hold.totalCostKrw - soldCostKrw };
+  }
+
+  state.feesTotalKrw += bd.feeTaxKrw;
+  state.logs.unshift({
+    time: formatSimClockShort(), type: side === 'buy' ? 'BUY' : 'SELL',
+    code: stock.code, name: stock.name, ex: stock.ex, qty,
+    priceNative: formatNative(fillPrice, ex.currency, isCrypto),
+    totalKrw: bd.totalKrw, feeKrw: bd.feeTaxKrw
+  });
+  if (state.logs.length > 150) state.logs.pop();
+
+  pushToast(
+    `${side === 'buy' ? '🔴 매수 체결' : '🔵 매도 체결'} · ${stock.name}`,
+    `${formatQtyText(qty, isCrypto)} @ ${formatNative(fillPrice, ex.currency, isCrypto)} (${formatKrw(bd.totalKrw)})`,
+    side === 'buy' ? 'up' : 'down'
+  );
+  saveState();
+  renderAll();
+  return true;
+}
+
+function processOpenOrders() {
+  if (!state.openOrders.length) return;
+  const remaining = [];
+  for (const ord of state.openOrders) {
+    const stock = getStock(ord.code);
+    const status = getExchangeStatus(stock.ex);
+    if (!status.isOpen) { remaining.push(ord); continue; }
+    const matched = ord.type === 'MARKET' ||
+      (ord.side === 'buy' && stock.price <= ord.price) ||
+      (ord.side === 'sell' && stock.price >= ord.price);
+    if (!matched) { remaining.push(ord); continue; }
+    const fillPrice = ord.type === 'MARKET' ? stock.price : (ord.side === 'buy' ? Math.min(stock.price, ord.price) : Math.max(stock.price, ord.price));
+    executeFilledOrder(stock, ord.side, fillPrice, ord.qty, ord.type);
+  }
+  state.openOrders = remaining;
+  saveState();
+}
+
+function cancelOrder(orderId) {
+  const idx = state.openOrders.findIndex(o => o.id === orderId);
+  if (idx === -1) return;
+  const removed = state.openOrders.splice(idx, 1)[0];
+  const s = getStock(removed.code);
+  pushToast('미체결 취소', `${s.name} 주문이 취소되었습니다.`, 'neutral');
+  saveState();
+  renderAll();
+}
+
+/**
+ * ============================================================================
+ * 6. 배당 / 액면분할 / 실시간 틱 / Binance WebSocket
+ * ============================================================================
+ */
+function triggerCorporateActions() {
+  const dividendCodes = Object.keys(state.holdings).filter(code => (getStock(code).divYield || 0) > 0);
+  if (!dividendCodes.length) {
+    pushToast('배당 안내', '배당수익률이 있는 자산을 보유해야 배당이 지급됩니다.', 'neutral');
+    return;
+  }
+  let totalDivKrw = 0;
+  dividendCodes.forEach(code => {
+    const stock = getStock(code);
+    const hold = state.holdings[code];
+    const cur = CURRENCIES[EXCHANGES[stock.ex].currency];
+    const quarterlyRate = stock.divYield / 4;
+    const netDivKrw = stock.price * hold.qty * quarterlyRate * cur.rate * (1 - 0.154);
+    totalDivKrw += netDivKrw;
+    state.logs.unshift({
+      time: formatSimClockShort(), type: 'DIVIDEND', code: stock.code, name: stock.name,
+      ex: stock.ex, qty: hold.qty, priceNative: `분기배당 ${(quarterlyRate * 100).toFixed(2)}%`,
+      totalKrw: netDivKrw, feeKrw: 0
+    });
+  });
+  state.cashKrw += totalDivKrw;
+  state.dividendTotalKrw += totalDivKrw;
+  pushToast('💰 가상 분기 배당 입금', `세후 합계 ${formatKrw(totalDivKrw)}`, 'up');
+  saveState();
+  renderAll();
+}
+
+function applySimulatedSplit(code, ratio = 2) {
+  const stock = getStock(code);
+  const hold = state.holdings[code];
+  if (!stock || !hold || !Number.isInteger(ratio) || ratio < 2 || ratio > 10) {
+    pushToast('분할 불가', '현재 선택 종목을 보유 중이어야 합니다.', 'down');
+    return;
+  }
+  const dec = CURRENCIES[EXCHANGES[stock.ex].currency].decimals;
+  stock.price = Number((stock.price / ratio).toFixed(dec));
+  stock.prevClose = Number((stock.prevClose / ratio).toFixed(dec));
+  stock.dayOpen = Number((stock.dayOpen / ratio).toFixed(dec));
+  stock.dayHigh = Number((stock.dayHigh / ratio).toFixed(dec));
+  stock.dayLow = Number((stock.dayLow / ratio).toFixed(dec));
+  stock.candles.forEach(c => { c.open /= ratio; c.high /= ratio; c.low /= ratio; c.close /= ratio; });
+  hold.qty *= ratio;
+  hold.avgNative /= ratio;
+  state.logs.unshift({
+    time: formatSimClockShort(), type: 'SPLIT', code: stock.code, name: stock.name,
+    ex: stock.ex, qty: hold.qty, priceNative: `${ratio}:1 액면분할`, totalKrw: 0, feeKrw: 0
+  });
+  pushToast('✂️ 액면분할 적용', `${stock.name} ${ratio}:1 분할 완료`, 'neutral');
+  saveState();
+  renderAll();
+}
+
+let lastTickFlash = {};
+let cryptoWsConnected = false;
+let cryptoDepthWs = null;
+let liveDepthBooks = {};
+const TWELVE_DATA_KEY = 'marketdesk_twelvedata_key';
+const equityQuoteStatus = {};
+
+function connectBinanceWs() {
+  try {
+    const ws = new WebSocket('wss://stream.binance.com:9443/ws/!miniTicker@arr');
+    ws.onopen = () => { cryptoWsConnected = true; };
+    ws.onmessage = ev => {
+      try {
+        const list = JSON.parse(ev.data);
+        let changed = false;
+        list.forEach(t => {
+          if (!t.s || !t.s.endsWith('USDT')) return;
+          const sym = t.s.replace('USDT', '');
+          const st = state.stocks.find(s => s.code === sym && s.ex === 'CRYPTO');
+          if (st) {
+            const p = parseFloat(t.c);
+            if (p > 0 && p !== st.price) {
+              lastTickFlash[st.code] = p > st.price ? 'up' : 'down';
+              st.price = p;
+              st.dayHigh = Math.max(st.dayHigh, p);
+              st.dayLow = Math.min(st.dayLow, p);
+              const lastC = st.candles[st.candles.length - 1];
+              if (lastC) { lastC.close = p; lastC.high = Math.max(lastC.high, p); lastC.low = Math.min(lastC.low, p); }
+              changed = true;
+            }
+          }
+        });
+        if (changed) { processOpenOrders(); renderAll(); }
+      } catch (e) {}
+    };
+    ws.onclose = () => { cryptoWsConnected = false; };
+  } catch (e) { cryptoWsConnected = false; }
+}
+
+function connectBinanceDepthWs(stock) {
+  if (cryptoDepthWs) { try { cryptoDepthWs.close(); } catch (e) {} }
+  cryptoDepthWs = null;
+  if (!stock || EXCHANGES[stock.ex].region !== 'CRYPTO') return;
+  try {
+    const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${stock.code.toLowerCase()}usdt@depth5@100ms`);
+    cryptoDepthWs = ws;
+    ws.onmessage = ev => {
+      try {
+        const d = JSON.parse(ev.data);
+        liveDepthBooks[stock.code] = {
+          bids: (d.bids || []).map(x => ({ p: Number(x[0]), vol: Number(x[1]) })).filter(x => x.p > 0),
+          asks: (d.asks || []).map(x => ({ p: Number(x[0]), vol: Number(x[1]) })).filter(x => x.p > 0),
+          updatedAt: Date.now()
+        };
+        if (ui.selectedCode === stock.code && ui.mobileTab === 'order') renderOrderBook(stock);
+      } catch (e) {}
+    };
+  } catch (e) {}
+}
+
+function simulationStep() {
+  state.simTimeMs += 60 * 1000 * ui.speed;
+  state.stocks.forEach(stock => {
+    const ex = EXCHANGES[stock.ex];
+    const isCrypto = ex.region === 'CRYPTO';
+    if (!getExchangeStatus(stock.ex).isOpen) return;
+    if (isCrypto && cryptoWsConnected) return;
+
+    const stepVol = stock.vol * 0.14 * Math.sqrt(Math.min(ui.speed, 25));
+    const shock = (Math.random() - 0.495) * stepVol;
+    const oldPrice = stock.price;
+    const rawNew = Math.max(getTickSize(oldPrice, ex.currency, isCrypto), oldPrice * (1 + shock));
+    const newPrice = roundToTick(rawNew, ex.currency, isCrypto);
+    if (newPrice !== oldPrice) lastTickFlash[stock.code] = newPrice > oldPrice ? 'up' : 'down';
+
+    stock.price = newPrice;
+    stock.dayHigh = Math.max(stock.dayHigh, newPrice);
+    stock.dayLow = Math.min(stock.dayLow, newPrice);
+    const addedVol = Math.round((1500 + Math.random() * 14000) * ui.speed);
+    stock.dayVolume += addedVol;
+
+    const lastCandle = stock.candles[stock.candles.length - 1];
+    if (lastCandle) {
+      lastCandle.close = newPrice;
+      lastCandle.high = Math.max(lastCandle.high, newPrice);
+      lastCandle.low = Math.min(lastCandle.low, newPrice);
+      lastCandle.volume += addedVol;
+    }
+    if (Math.random() < 0.25 * Math.min(ui.speed, 4)) {
+      stock.candles.push({ open: newPrice, high: newPrice, low: newPrice, close: newPrice, volume: Math.round(8000 + Math.random() * 35000) });
+      if (stock.candles.length > 90) stock.candles.shift();
+    }
+  });
+  processOpenOrders();
+  saveState();
+  renderAll();
+}
+
+function jumpToNextExchangeOpen() {
+  const stock = getStock(ui.selectedCode);
+  const ex = EXCHANGES[stock.ex];
+  state.isHolidayOverride = false;
+  document.getElementById('holidayStateText').textContent = 'OFF';
+  for (let i = 1; i <= 96 * 4; i++) {
+    const candidateMs = state.simTimeMs + i * 15 * 60 * 1000;
+    if (getExchangeStatus(stock.ex, candidateMs).isOpen) {
+      state.simTimeMs = candidateMs;
+      state.stocks.forEach(s => { s.prevClose = s.price; s.dayOpen = s.price; s.dayHigh = s.price; s.dayLow = s.price; });
+      processOpenOrders();
+      saveState();
+      renderAll();
+      pushToast(`⏩ ${ex.name} 개장 이동`, getExchangeLocalTimeStr(stock.ex), 'neutral');
+      return;
+    }
+  }
+}
+
+/**
+ * ============================================================================
+ * 7. 캔들스틱 차트 캔버스 렌더러 (터치 십자선 연동)
+ * ============================================================================
+ */
+function renderCandlestickChart() {
+  const canvas = document.getElementById('candleCanvas');
+  const container = document.getElementById('chartContainer');
+  if (!canvas || !container) return;
+  const rect = container.getBoundingClientRect();
+  if (rect.width === 0) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const w = rect.width;
+  const h = rect.height;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const stock = getStock(ui.selectedCode);
+  const ex = EXCHANGES[stock.ex];
+  const isCrypto = ex.region === 'CRYPTO';
+  const mult = ui.timeframe === '1D' ? 1 : ui.timeframe === '1W' ? 1.015 : ui.timeframe === '1M' ? 1.04 : 1.09;
+  const candles = stock.candles.slice(-40).map((c, idx, arr) => idx === arr.length - 1 ? c : {
+    open: c.open * (2 - mult), high: c.high * mult, low: c.low * (2 - mult), close: c.close, volume: c.volume
+  });
+  if (candles.length < 2) return;
+
+  const pad = { left: 8, right: 64, top: 14, bottom: 14 };
+  const plotW = w - pad.left - pad.right;
+  const priceAreaH = (h - pad.top - pad.bottom) * 0.72;
+  const volTop = pad.top + priceAreaH + 8;
+  const volAreaH = (h - pad.top - pad.bottom) * 0.24;
+
+  const minPrice = Math.min(...candles.map(c => c.low)) * 0.9985;
+  const maxPrice = Math.max(...candles.map(c => c.high)) * 1.0015;
+  const priceSpan = Math.max(maxPrice - minPrice, 0.00001);
+  const maxVol = Math.max(...candles.map(c => c.volume), 1);
+
+  const yPrice = p => pad.top + ((maxPrice - p) / priceSpan) * priceAreaH;
+  const yVol = v => volTop + volAreaH - (v / maxVol) * volAreaH;
+  const dec = isCrypto ? (stock.price < 1 ? 4 : 2) : CURRENCIES[ex.currency].decimals;
+
+  ctx.font = '10px Inter, sans-serif';
+  ctx.textAlign = 'left';
+  for (let i = 0; i <= 4; i++) {
+    const yy = pad.top + (priceAreaH * i) / 4;
+    const val = maxPrice - (priceSpan * i) / 4;
+    ctx.strokeStyle = '#182438';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, yy);
+    ctx.lineTo(w - pad.right, yy);
+    ctx.stroke();
+
+    ctx.fillStyle = '#73859e';
+    ctx.fillText(val.toLocaleString('ko-KR', { maximumFractionDigits: dec }), w - pad.right + 5, yy + 3);
+  }
+
+  const step = plotW / candles.length;
+  const bodyW = Math.max(3, Math.min(9, step * 0.64));
+
+  candles.forEach((c, i) => {
+    const cx = pad.left + step * (i + 0.5);
+    const isUp = c.close >= c.open;
+    const color = isUp ? '#ff4d64' : '#4b9cff';
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(cx, yPrice(c.high));
+    ctx.lineTo(cx, yPrice(c.low));
+    ctx.stroke();
+
+    const topY = yPrice(Math.max(c.open, c.close));
+    const botY = yPrice(Math.min(c.open, c.close));
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - bodyW / 2, topY, bodyW, Math.max(2, botY - topY));
+
+    const vy = yVol(c.volume);
+    ctx.fillStyle = isUp ? 'rgba(255, 77, 100, 0.45)' : 'rgba(75, 156, 255, 0.45)';
+    ctx.fillRect(cx - bodyW / 2, vy, bodyW, volTop + volAreaH - vy);
+  });
+
+  const drawMA = (period, strokeColor) => {
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    let started = false;
+    candles.forEach((_, idx) => {
+      if (idx < period - 1) return;
+      let sum = 0;
+      for (let k = 0; k < period; k++) sum += candles[idx - k].close;
+      const cx = pad.left + step * (idx + 0.5);
+      const cy = yPrice(sum / period);
+      if (!started) { ctx.moveTo(cx, cy); started = true; } else ctx.lineTo(cx, cy);
+    });
+    ctx.stroke();
+  };
+  drawMA(5, '#f5c451');
+  drawMA(20, '#c084fc');
+
+  const last = candles[candles.length - 1];
+  const curY = yPrice(last.close);
+  const lastColor = last.close >= stock.prevClose ? '#ff4d64' : '#4b9cff';
+  ctx.save();
+  ctx.setLineDash([3, 3]);
+  ctx.strokeStyle = lastColor;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, curY);
+  ctx.lineTo(w - pad.right, curY);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle = lastColor;
+  ctx.fillRect(w - pad.right + 2, curY - 9, pad.right - 4, 18);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 10px Inter, sans-serif';
+  ctx.fillText(last.close.toLocaleString('ko-KR', { maximumFractionDigits: dec }), w - pad.right + 4, curY + 3);
+
+  // 터치/호버 십자선 & 상단 바 업데이트
+  if (ui.hoverCandleIdx >= 0 && ui.hoverCandleIdx < candles.length) {
+    const hc = candles[ui.hoverCandleIdx];
+    const hx = pad.left + step * (ui.hoverCandleIdx + 0.5);
+    ctx.save();
+    ctx.setLineDash([2, 2]);
+    ctx.strokeStyle = '#f5c451';
+    ctx.beginPath();
+    ctx.moveTo(hx, pad.top);
+    ctx.lineTo(hx, volTop + volAreaH);
+    ctx.stroke();
+    ctx.restore();
+
+    document.getElementById('ohlcOpen').textContent = formatNative(hc.open, ex.currency, isCrypto);
+    document.getElementById('ohlcHigh').textContent = formatNative(hc.high, ex.currency, isCrypto);
+    document.getElementById('ohlcLow').textContent = formatNative(hc.low, ex.currency, isCrypto);
+    document.getElementById('ohlcVol').textContent = (hc.volume / 1000).toFixed(0) + 'K';
+  }
+}
+
+/**
+ * ============================================================================
+ * 8. 전체 모바일 UI 렌더링
+ * ============================================================================
+ */
+function formatSimClockShort() {
+  return new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(new Date(state.simTimeMs));
+}
+
+const GLOBAL_BENCHMARKS = [
+  {group:'INDEX', name:'S&P 500', code:'미국 대형주', value:'6,720.40', change:0.42},
+  {group:'INDEX', name:'NASDAQ 100', code:'미국 기술주', value:'24,180.65', change:0.68},
+  {group:'INDEX', name:'KOSPI', code:'한국 종합', value:'3,180.25', change:-0.31},
+  {group:'INDEX', name:'Nikkei 225', code:'일본 대표', value:'50,240.80', change:0.36},
+  {group:'COMMODITY', name:'금 Gold', code:'USD/oz', value:'4,080.20', change:0.34},
+  {group:'COMMODITY', name:'WTI 원유', code:'USD/bbl', value:'61.25', change:-0.74},
+  {group:'BOND', name:'미국 10년물', code:'국채금리', value:'4.08%', change:0.02},
+  {group:'BOND', name:'한국 10년물', code:'국채금리', value:'2.91%', change:0.01},
+  {group:'FX', name:'USD/KRW', code:'달러/원', value:'1,398.50', change:0.15},
+  {group:'FX', name:'USD/JPY', code:'달러/엔', value:'154.20', change:0.22}
+];
+let activeBenchmarkGroup = 'ALL';
+
+function renderGlobalBenchmarks() {
+  const grid = document.getElementById('benchmarkGrid');
+  if (!grid) return;
+  const rows = activeBenchmarkGroup === 'ALL' ? GLOBAL_BENCHMARKS : GLOBAL_BENCHMARKS.filter(x => x.group === activeBenchmarkGroup);
+  grid.innerHTML = rows.map(x => {
+    const up = x.change >= 0;
+    return `<div class="rounded-xl border border-[#1c2b42] bg-[#0b1423] p-2.5">
+      <div class="flex justify-between items-center">
+        <span class="text-[11px] font-extrabold text-slate-200">${x.name}</span>
+        <span class="text-[10px] font-bold ${up ? 'up' : 'down'}">${up ? '+' : ''}${x.change.toFixed(2)}%</span>
+      </div>
+      <div class="text-xs font-black text-white mt-1">${x.value} <span class="text-[9px] font-normal text-[#71839e]">${x.code}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function renderAll() {
+  renderGlobalBenchmarks();
+
+  // 1) 상단 시계 & 환율 티커
+  document.getElementById('simClockDisplay').textContent = new Intl.DateTimeFormat('ko-KR', {
+    timeZone: 'Asia/Seoul', month: '2-digit', day: '2-digit', weekday: 'short',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(new Date(state.simTimeMs)) + (state.isHolidayOverride ? ' (휴장)' : '');
+
+  const fxCodes = ['USD', 'JPY', 'CNY', 'HKD', 'EUR', 'GBP'];
+  document.getElementById('globalTickerBar').innerHTML = fxCodes.map(c => {
+    const cur = CURRENCIES[c];
+    const displayVal = c === 'JPY' ? (cur.rate * 100).toFixed(1) : cur.rate.toFixed(1);
+    return `<div class="flex items-center gap-1 shrink-0">
+      <span class="text-[#7c8ea8]">${c}</span>
+      <span class="font-bold text-slate-200">₩${displayVal}</span>
+    </div>`;
+  }).join('');
+
+  // 2) 미체결 뱃지
+  document.getElementById('navOpenOrderDot').classList.toggle('hidden', state.openOrders.length === 0);
+
+  // 3) 종목 리스트 렌더링 (모바일 카드형 리스트)
+  renderExchangeChips();
+  const q = ui.searchQuery.trim().toLowerCase();
+  document.getElementById('clearSearchBtn').classList.toggle('hidden', !q);
+
+  const filteredStocks = state.stocks.filter(s => {
+    const ex = EXCHANGES[s.ex];
+    if (ui.regionFilter === 'FAV' && !state.watchlist.includes(s.code)) return false;
+    if (ui.regionFilter !== 'ALL' && ui.regionFilter !== 'FAV' && ex.region !== ui.regionFilter) return false;
+    if (ui.exchangeFilter !== 'ALL' && s.ex !== ui.exchangeFilter) return false;
+    if (q && !s.name.toLowerCase().includes(q) && !s.code.toLowerCase().includes(q) && !s.sector.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  document.getElementById('listedCountBadge').textContent = `${filteredStocks.length} 종목`;
+  document.getElementById('marketListContainer').innerHTML = filteredStocks.map(s => {
+    const ex = EXCHANGES[s.ex];
+    const isCrypto = ex.region === 'CRYPTO';
+    const status = getExchangeStatus(s.ex);
+    const chgPct = ((s.price / s.prevClose) - 1) * 100;
+    const isSel = s.code === ui.selectedCode;
+    const isFav = state.watchlist.includes(s.code);
+    const flash = lastTickFlash[s.code];
+    const flashCls = flash === 'up' ? 'flash-up' : flash === 'down' ? 'flash-down' : '';
+    delete lastTickFlash[s.code];
+
+    return `<div data-code="${s.code}" class="stock-row px-3.5 py-3 flex items-center justify-between gap-2 active:bg-[#1a2b47] transition ${isSel ? 'bg-[#15233b]' : ''}">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <button data-star="${s.code}" class="star-btn text-base px-0.5 ${isFav ? 'text-amber-400' : 'text-[#3f506b]'}">★</button>
+        ${getCompanyLogoHtml(s, 'sm')}
+        <div class="min-w-0">
+          <div class="text-xs font-extrabold text-slate-100 truncate flex items-center gap-1.5">
+            <span>${s.name}</span>
+            <span class="inline-block w-1.5 h-1.5 rounded-full ${status.isOpen ? 'bg-emerald-400' : 'bg-slate-500'}"></span>
+          </div>
+          <div class="text-[10px] text-[#7c8ea8] truncate mt-0.5">${s.code} · <span class="text-[#93c5fd]">${ex.name}</span></div>
+        </div>
+      </div>
+      <div class="text-right shrink-0 ${flashCls} px-1.5 py-0.5 rounded">
+        <div class="text-xs font-black text-white">${formatNative(s.price, ex.currency, isCrypto)}</div>
+        <div class="text-[11px] font-bold ${chgPct >= 0 ? 'up' : 'down'}">${formatPct(chgPct)}</div>
+      </div>
+    </div>`;
+  }).join('') || `<div class="py-10 text-center text-xs text-[#73859e]">검색 조건에 맞는 종목이 없습니다.</div>`;
+
+  // 4) 선택 종목 차트 & 주문 상단 동기화
+  const sel = getStock(ui.selectedCode);
+  const selEx = EXCHANGES[sel.ex];
+  const selIsCrypto = selEx.region === 'CRYPTO';
+  const selCur = CURRENCIES[selEx.currency];
+  const selStatus = getExchangeStatus(sel.ex);
+  const selDiff = sel.price - sel.prevClose;
+  const selPct = (selDiff / sel.prevClose) * 100;
+
+  document.getElementById('chartStockName').textContent = sel.name;
+  document.getElementById('chartExchangeBadge').textContent = `${sel.ex} · ${selEx.currency}`;
+  const badgeEl = document.getElementById('marketSessionBadge');
+  badgeEl.textContent = `● ${selStatus.label}`;
+  badgeEl.className = `text-[10px] font-bold px-1.5 py-0.5 rounded border ${selStatus.badgeClass}`;
+  document.getElementById('favToggleBtn').className = `text-base leading-none ${state.watchlist.includes(sel.code) ? 'text-amber-400' : 'text-slate-600'}`;
+  document.getElementById('chartStockSub').textContent = `${sel.code} · ${sel.sector} · ${getExchangeLocalTimeStr(sel.ex)} · 최소 ${selEx.lot}${selIsCrypto ? '개' : '주'}`;
+
+  const logoBox = document.getElementById('selectedLogoBox');
+  logoBox.outerHTML = getCompanyLogoHtml(sel).replace('class="company-badge ', 'id="selectedLogoBox" class="company-badge ');
+
+  document.getElementById('chartNativePrice').textContent = formatNative(sel.price, selEx.currency, selIsCrypto);
+  const chgBadge = document.getElementById('chartChangeBadge');
+  chgBadge.textContent = `${selDiff >= 0 ? '+' : ''}${formatNative(selDiff, selEx.currency, selIsCrypto)} (${formatPct(selPct)})`;
+  chgBadge.className = `text-[11px] font-bold mt-0.5 ${selDiff >= 0 ? 'up' : 'down'}`;
+  document.getElementById('chartKrwEquiv').textContent = `≈ ${formatKrw(sel.price * selCur.rate)}`;
+
+  if (ui.hoverCandleIdx < 0) {
+    document.getElementById('ohlcOpen').textContent = formatNative(sel.dayOpen, selEx.currency, selIsCrypto);
+    document.getElementById('ohlcHigh').textContent = formatNative(sel.dayHigh, selEx.currency, selIsCrypto);
+    document.getElementById('ohlcLow').textContent = formatNative(sel.dayLow, selEx.currency, selIsCrypto);
+    document.getElementById('ohlcVol').textContent = (sel.dayVolume / 10000).toFixed(1) + '만';
+  }
+  document.getElementById('exchangeRulesHint').textContent = `수수료 ${(selEx.buyFee * 100).toFixed(3)}%`;
+
+  // 주문 탭 상단 바 동기화
+  document.getElementById('orderStockName').textContent = sel.name;
+  document.getElementById('orderSessionTag').textContent = selStatus.label;
+  document.getElementById('orderSessionTag').className = `text-[10px] px-1.5 py-0.5 rounded font-bold border ${selStatus.badgeClass}`;
+  document.getElementById('orderLivePrice').textContent = formatNative(sel.price, selEx.currency, selIsCrypto);
+  const orderPctEl = document.getElementById('orderLivePct');
+  orderPctEl.textContent = formatPct(selPct);
+  orderPctEl.className = `text-xs font-bold ml-1 ${selDiff >= 0 ? 'up' : 'down'}`;
+
+  if (ui.mobileTab === 'chart') renderCandlestickChart();
+  renderOrderBook(sel);
+  updateOrderPanelEstimates();
+  renderPortfolioView();
+}
+
+function renderExchangeChips() {
+  const container = document.getElementById('exchangeChips');
+  if (ui.regionFilter === 'ALL' || ui.regionFilter === 'FAV' || ui.regionFilter === 'CRYPTO') {
+    container.innerHTML = '';
+    return;
+  }
+  const keys = Object.keys(EXCHANGES).filter(k => EXCHANGES[k].region === ui.regionFilter);
+  if (keys.length <= 1) { container.innerHTML = ''; return; }
+  const chips = [{ key: 'ALL', label: '전체' }, ...keys.map(k => ({ key: k, label: EXCHANGES[k].name }))];
+  container.innerHTML = chips.map(ch => {
+    const active = ui.exchangeFilter === ch.key;
+    return `<button data-ex="${ch.key}" class="ex-chip px-2.5 py-1 rounded-lg text-[11px] font-semibold border shrink-0 ${active ? 'bg-[#1f365c] border-[#4b9cff] text-white' : 'bg-[#0b1322] border-[#1f2e45] text-[#8494ac]'}">${ch.label}</button>`;
+  }).join('');
+}
+
+function renderOrderBook(stock) {
+  const ex = EXCHANGES[stock.ex];
+  const isCrypto = ex.region === 'CRYPTO';
+  const tick = getTickSize(stock.price, ex.currency, isCrypto);
+  const live = isCrypto ? liveDepthBooks[stock.code] : null;
+  const isLive = !!(live && Date.now() - live.updatedAt < 10000 && live.bids.length && live.asks.length);
+  const asks = isLive ? live.asks.slice(0, 5).reverse() : [];
+  const bids = isLive ? live.bids.slice(0, 5) : [];
+
+  if (!isLive) {
+    for (let i = 5; i >= 1; i--) {
+      const p = roundToTick(stock.price + tick * i, ex.currency, isCrypto);
+      const vol = isCrypto ? Number((0.15 + ((i * 37) % 180) / 100).toFixed(2)) : Math.round(120 + ((stock.code.charCodeAt(0) * i * 37) % 850));
+      asks.push({ p, vol });
+    }
+    for (let i = 0; i < 5; i++) {
+      const p = roundToTick(Math.max(tick, stock.price - tick * i), ex.currency, isCrypto);
+      const vol = isCrypto ? Number((0.2 + ((i * 41) % 190) / 100).toFixed(2)) : Math.round(150 + ((stock.code.charCodeAt(0) * (i + 2) * 41) % 900));
+      bids.push({ p, vol });
+    }
+  }
+
+  const maxVol = Math.max(...asks.map(a => a.vol), ...bids.map(b => b.vol), 0.01);
+  document.getElementById('orderBookSource').textContent = isLive ? 'LIVE' : '가상';
+
+  const askHtml = asks.map(a => {
+    const wPct = Math.round((a.vol / maxVol) * 100);
+    return `<div data-pickprice="${a.p}" class="ob-row flex items-center justify-between py-1 px-1.5 rounded bg-[#0c1629] active:bg-[#1a2f52] relative overflow-hidden">
+      <span class="font-bold down z-10">${formatNative(a.p, ex.currency, isCrypto)}</span>
+      <span class="text-[10px] text-[#7ea8e8] z-10">${a.vol}</span>
+      <div class="absolute left-0 top-0 bottom-0 bg-[#4b9cff]/15" style="width:${wPct}%"></div>
+    </div>`;
+  }).join('');
+
+  const bidHtml = bids.map((b, idx) => {
+    const wPct = Math.round((b.vol / maxVol) * 100);
+    return `<div data-pickprice="${b.p}" class="ob-row flex items-center justify-between py-1 px-1.5 rounded ${idx === 0 ? 'bg-[#1a1829] border border-[#ff4d64]/40' : 'bg-[#161221]'} active:bg-[#2d1e38] relative overflow-hidden">
+      <span class="font-bold up z-10">${formatNative(b.p, ex.currency, isCrypto)}</span>
+      <span class="text-[10px] text-[#f29aa5] z-10">${b.vol}</span>
+      <div class="absolute right-0 top-0 bottom-0 bg-[#ff4d64]/15" style="width:${wPct}%"></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('orderBookBox').innerHTML = askHtml + `<div class="h-[1px] bg-[#243652] my-0.5"></div>` + bidHtml;
+}
+
+function updateSideButtonsUI() {
+  if (ui.orderSide === 'buy') {
+    document.getElementById('sideBuyBtn').className = 'py-2 rounded-lg text-xs font-extrabold bg-[#ff4d64] text-white transition';
+    document.getElementById('sideSellBtn').className = 'py-2 rounded-lg text-xs font-extrabold text-[#8494ac] transition';
+  } else {
+    document.getElementById('sideSellBtn').className = 'py-2 rounded-lg text-xs font-extrabold bg-[#4b9cff] text-white transition';
+    document.getElementById('sideBuyBtn').className = 'py-2 rounded-lg text-xs font-extrabold text-[#8494ac] transition';
+  }
+}
+
+function updateOrderPanelEstimates() {
+  const stock = getStock(ui.selectedCode);
+  const ex = EXCHANGES[stock.ex];
+  const isCrypto = ex.region === 'CRYPTO';
+  const cur = CURRENCIES[ex.currency];
+  const status = getExchangeStatus(stock.ex);
+
+  document.getElementById('orderCurrencyLabel').textContent = ex.currency;
+  document.getElementById('tickSizeHint').textContent = `단위 ${getTickSize(stock.price, ex.currency, isCrypto)}`;
+  document.getElementById('lotUnitHint').textContent = `${ex.lot}${isCrypto ? '개' : '주'}`;
+
+  const priceInput = document.getElementById('orderPriceInput');
+  if (ui.orderType === 'MARKET') {
+    priceInput.value = stock.price;
+    priceInput.disabled = true;
+    priceInput.classList.add('opacity-50');
+  } else {
+    priceInput.disabled = false;
+    priceInput.classList.remove('opacity-50');
+  }
+
+  const execPrice = Number(priceInput.value) || stock.price;
+  const qty = Math.max(0, Number(document.getElementById('orderQtyInput').value) || 0);
+  const bd = calculateOrderBreakdown(stock, ui.orderSide, execPrice, qty);
+
+  let maxQty = 0;
+  if (ui.orderSide === 'buy') {
+    const availKrw = getAvailableBuyingPowerKrw(ex.currency);
+    const unitCostKrw = execPrice * cur.rate * (1 + ex.buyFee + ex.buyTax + (ex.currency === 'KRW' ? 0 : FX_SPREAD_RATE));
+    const rawMax = unitCostKrw > 0 ? (availKrw / unitCostKrw) : 0;
+    maxQty = Math.floor(rawMax / ex.lot) * ex.lot;
+  } else {
+    const hold = state.holdings[stock.code]?.qty || 0;
+    const reserved = state.openOrders.filter(o => o.code === stock.code && o.side === 'sell').reduce((a, o) => a + o.qty, 0);
+    maxQty = Math.max(0, hold - reserved);
+  }
+  maxQty = isCrypto ? Number(maxQty.toFixed(4)) : Math.floor(maxQty);
+
+  document.getElementById('maxOrderQtyText').textContent = `최대 ${isCrypto ? maxQty : maxQty + '주'}`;
+  document.getElementById('maxOrderQtyText').dataset.maxqty = maxQty;
+
+  document.getElementById('estNativeAmount').textContent = formatNative(bd.grossNative, ex.currency, isCrypto);
+  document.getElementById('estFeeTaxKrw').textContent = formatKrw(bd.feeTaxKrw);
+  document.getElementById('estTotalKrw').textContent = formatKrw(bd.totalKrw);
+  document.getElementById('marketClosedNotice').classList.toggle('hidden', status.isOpen);
+
+  const subBtn = document.getElementById('submitOrderBtn');
+  subBtn.textContent = !status.isOpen
+    ? `${ui.orderSide === 'buy' ? '매수' : '매도'} 예약 주문 (${status.label})`
+    : `${stock.name} ${ui.orderSide === 'buy' ? '매수' : '매도'} 주문 실행`;
+  subBtn.className = `w-full py-3.5 rounded-xl font-black text-sm text-white shadow-lg active:scale-98 transition ${ui.orderSide === 'buy' ? 'bg-[#ff4d64]' : 'bg-[#4b9cff]'}`;
+}
+
+function renderPortfolioView() {
+  let stockEvalKrw = 0, totalCostKrw = 0;
+  const heldCodes = Object.keys(state.holdings);
+  const regionMap = { KR: 0, US: 0, JP: 0, CNHK: 0, EU: 0, ETC: 0, CRYPTO: 0 };
+
+  heldCodes.forEach(code => {
+    const s = getStock(code);
+    const h = state.holdings[code];
+    const ex = EXCHANGES[s.ex];
+    const ev = s.price * h.qty * CURRENCIES[ex.currency].rate;
+    stockEvalKrw += ev;
+    totalCostKrw += h.totalCostKrw;
+    regionMap[ex.region] = (regionMap[ex.region] || 0) + ev;
+  });
+
+  const fxWalletKrw = Object.entries(state.fxWallets).reduce((sum, [c, amt]) => sum + amt * CURRENCIES[c].rate, 0);
+  const seedBase = state.initialSeedKrw || DEFAULT_SEED_KRW;
+  const totalAssetsKrw = state.cashKrw + fxWalletKrw + stockEvalKrw;
+  const totalReturnPct = ((totalAssetsKrw / seedBase) - 1) * 100;
+  const unrealizedPnlKrw = stockEvalKrw - totalCostKrw;
+
+  document.getElementById('statInitialSeedBadge').textContent = `원금 ${formatKrw(seedBase)}`;
+  document.getElementById('statTotalAssets').textContent = formatKrw(totalAssetsKrw);
+  document.getElementById('statTotalReturn').innerHTML = `초기 자금 대비 <span class="font-bold ${totalReturnPct >= 0 ? 'up' : 'down'}">${formatPct(totalReturnPct)}</span>`;
+  document.getElementById('statCashKrw').textContent = formatKrw(state.cashKrw);
+  document.getElementById('statStockEval').textContent = formatKrw(stockEvalKrw);
+
+  const unPnlEl = document.getElementById('statUnrealizedPnl');
+  unPnlEl.textContent = formatSignedKrw(unrealizedPnlKrw);
+  unPnlEl.className = `font-extrabold mt-0.5 ${unrealizedPnlKrw >= 0 ? 'up' : 'down'}`;
+
+  const realEl = document.getElementById('statRealizedPnl');
+  realEl.textContent = formatSignedKrw(state.realizedPnlKrw);
+  realEl.className = `font-extrabold mt-0.5 ${state.realizedPnlKrw >= 0 ? 'up' : 'down'}`;
+  document.getElementById('statFeeDivSub').textContent = `배당 +${formatKrw(state.dividendTotalKrw)} · 비용 -${formatKrw(state.feesTotalKrw)}`;
+
+  const regionNames = { KR: '한국', US: '미국', JP: '일본', CNHK: '중·홍콩', EU: '유럽', ETC: '기타', CRYPTO: '코인' };
+  document.getElementById('mobileRegionBars').innerHTML = Object.entries(regionMap).filter(([, v]) => v > 0).map(([r, v]) => {
+    const pct = stockEvalKrw > 0 ? ((v / stockEvalKrw) * 100).toFixed(1) : 0;
+    return `<div class="flex items-center gap-2 text-xs">
+      <span class="w-14 text-[#94a6c2] font-semibold">${regionNames[r]}</span>
+      <div class="flex-1 h-2 bg-[#162236] rounded-full overflow-hidden"><div class="h-full bg-[#4b9cff]" style="width:${pct}%"></div></div>
+      <span class="w-12 text-right font-bold text-white">${pct}%</span>
+    </div>`;
+  }).join('') || `<div class="text-xs text-[#73859e]">보유 중인 자산이 없습니다.</div>`;
+
+  // 하단 보유/미체결/로그 카드
+  document.getElementById('tabHoldCount').textContent = heldCodes.length;
+  document.getElementById('tabOpenCount').textContent = state.openOrders.length;
+  document.getElementById('cancelAllOpenBtn').classList.toggle('hidden', ui.bottomTab !== 'openOrders' || state.openOrders.length === 0);
+
+  const container = document.getElementById('bottomDeskContent');
+  if (ui.bottomTab === 'holdings') {
+    if (!heldCodes.length) {
+      container.innerHTML = `<div class="py-10 text-center text-xs text-[#73859e]">보유 자산이 없습니다. 시세 탭에서 종목을 매수해 보세요.</div>`;
+      return;
+    }
+    container.innerHTML = `<div class="divide-y divide-[#152136]">
+      ${heldCodes.map(code => {
+        const s = getStock(code);
+        const h = state.holdings[code];
+        const ex = EXCHANGES[s.ex];
+        const isCrypto = ex.region === 'CRYPTO';
+        const evalKrw = s.price * h.qty * CURRENCIES[ex.currency].rate;
+        const pnlKrw = evalKrw - h.totalCostKrw;
+        const pnlPct = h.totalCostKrw > 0 ? (pnlKrw / h.totalCostKrw) * 100 : 0;
+        return `<div data-code="${s.code}" class="stock-row py-2.5 flex items-center justify-between gap-2 active:bg-[#142034]">
+          <div class="flex items-center gap-2 min-w-0">
+            ${getCompanyLogoHtml(s, 'sm')}
+            <div class="min-w-0">
+              <div class="text-xs font-extrabold text-white truncate">${s.name}</div>
+              <div class="text-[10px] text-[#8494ac]">${formatQtyText(h.qty, isCrypto)} · 평단 ${formatNative(h.avgNative, ex.currency, isCrypto)}</div>
+            </div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-xs font-black text-white">${formatKrw(evalKrw)}</div>
+            <div class="text-[11px] font-bold ${pnlKrw >= 0 ? 'up' : 'down'}">${formatSignedKrw(pnlKrw)} (${formatPct(pnlPct)})</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  } else if (ui.bottomTab === 'openOrders') {
+    if (!state.openOrders.length) {
+      container.innerHTML = `<div class="py-10 text-center text-xs text-[#73859e]">대기 중인 미체결 주문이 없습니다.</div>`;
+      return;
+    }
+    container.innerHTML = `<div class="divide-y divide-[#152136]">
+      ${state.openOrders.map(o => {
+        const s = getStock(o.code);
+        const ex = EXCHANGES[s.ex];
+        const isCrypto = ex.region === 'CRYPTO';
+        return `<div class="py-2.5 flex items-center justify-between gap-2 text-xs">
+          <div>
+            <div class="font-bold text-white">${s.name} <span class="${o.side === 'buy' ? 'up' : 'down'}">(${o.side === 'buy' ? '매수' : '매도'})</span></div>
+            <div class="text-[10px] text-[#8494ac]">${formatNative(o.price, ex.currency, isCrypto)} · ${formatQtyText(o.qty, isCrypto)}</div>
+          </div>
+          <button data-cancelid="${o.id}" class="cancel-ord-btn px-2.5 py-1.5 rounded-lg bg-[#2a1c28] text-[#ff7b8b] text-[11px] font-bold">취소</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+  } else {
+    if (!state.logs.length) {
+      container.innerHTML = `<div class="py-10 text-center text-xs text-[#73859e]">체결 및 배당 기록이 없습니다.</div>`;
+      return;
+    }
+    container.innerHTML = `<div class="divide-y divide-[#152136] text-xs">
+      ${state.logs.slice(0, 30).map(l => {
+        const isCrypto = l.ex === 'CRYPTO';
+        const badge = l.type === 'BUY' ? '<span class="up font-bold">매수</span>'
+          : l.type === 'SELL' ? '<span class="down font-bold">매도</span>'
+          : l.type === 'DIVIDEND' ? '<span class="text-amber-300 font-bold">배당</span>'
+          : '<span class="text-purple-300 font-bold">분할</span>';
+        return `<div class="py-2 flex items-center justify-between">
+          <div>${badge} <b class="text-slate-100 ml-1">${l.name}</b></div>
+          <div class="text-right">
+            <div class="text-slate-200 font-semibold">${formatQtyText(l.qty, isCrypto)} · ${l.priceNative}</div>
+            <div class="text-[10px] text-[#7c8ea8]">${l.time}</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+}
+
+function selectStock(code, syncPrice = true, moveToChart = false) {
+  ui.selectedCode = code;
+  ui.hoverCandleIdx = -1;
+  const stock = getStock(code);
+  connectBinanceDepthWs(stock);
+  const ex = EXCHANGES[stock.ex];
+  if (syncPrice) {
+    document.getElementById('orderPriceInput').value = stock.price;
+    document.getElementById('orderQtyInput').value = ex.lot;
+    document.getElementById('orderQtyInput').step = ex.lot;
+  }
+  renderAll();
+  if (moveToChart) setMobileTab('chart');
+}
+
+function openFxModal() {
+  document.getElementById('autoFxCheckbox').checked = state.autoFx;
+  document.getElementById('fxRatesGrid').innerHTML = Object.entries(CURRENCIES).map(([code, cur]) => {
+    const bal = code === 'KRW' ? state.cashKrw : (state.fxWallets[code] || 0);
+    return `<div class="p-3 rounded-xl bg-[#0b1322] border border-[#1e2e47]">
+      <div class="flex justify-between items-center">
+        <span class="text-xs font-extrabold text-white">${code}</span>
+        <span class="text-[11px] text-[#93c5fd] font-bold">₩${cur.rate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}</span>
+      </div>
+      <div class="text-xs font-black text-slate-100 mt-1">${formatNative(bal, code)}</div>
+      <div class="text-[10px] text-[#7c8ea8]">≈ ${formatKrw(bal * cur.rate)}</div>
+    </div>`;
+  }).join('');
+  openBottomSheet('fxModal');
+}
+
+function pushToast(title, body, tone = 'neutral') {
+  const stack = document.getElementById('toastStack');
+  const border = tone === 'up' ? 'border-[#ff4d64]' : tone === 'down' ? 'border-[#4b9cff]' : 'border-[#3b5984]';
+  const el = document.createElement('div');
+  el.className = `bg-[#101a2e]/95 backdrop-blur border-l-4 ${border} border border-[#243754] rounded-xl px-3.5 py-2.5 shadow-2xl transition-all duration-300`;
+  el.innerHTML = `<div class="text-xs font-extrabold text-white">${title}</div><div class="text-[11px] text-slate-300 mt-0.5">${body}</div>`;
+  stack.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-6px)';
+    setTimeout(() => el.remove(), 250);
+  }, 2600);
+}
+
+/**
+ * ============================================================================
+ * 9. 이벤트 바인딩 (터치 차트, 네비게이션, 시트, 계정)
+ * ============================================================================
+ */
+document.getElementById('mobileBottomNav').addEventListener('click', e => {
+  const btn = e.target.closest('[data-mtab]');
+  if (btn) setMobileTab(btn.dataset.mtab);
+});
+
+document.getElementById('cycleSpeedBtn').addEventListener('click', () => {
+  const speeds = [1, 15, 60];
+  ui.speed = speeds[(speeds.indexOf(ui.speed) + 1) % speeds.length];
+  document.getElementById('speedLabel').textContent = `${ui.speed}x`;
+  pushToast(`⚡ 배속 변경: ${ui.speed}x`, `1초당 가상 시간 ${ui.speed}분 경과`, 'neutral');
+});
+
+document.getElementById('openToolsSheetBtn').addEventListener('click', () => openBottomSheet('toolsSheet'));
+document.querySelectorAll('.close-sheet').forEach(btn => btn.addEventListener('click', closeAllSheets));
+document.querySelectorAll('.bottom-sheet-backdrop').forEach(bg => {
+  bg.addEventListener('click', e => { if (e.target === bg) closeAllSheets(); });
+});
+
+document.getElementById('regionTabs').addEventListener('click', e => {
+  const btn = e.target.closest('[data-region]');
+  if (!btn) return;
+  ui.regionFilter = btn.dataset.region;
+  ui.exchangeFilter = 'ALL';
+  document.querySelectorAll('.region-btn').forEach(b => {
+    const isFav = b.dataset.region === 'FAV';
+    const isCrypto = b.dataset.region === 'CRYPTO';
+    const baseText = isFav ? 'text-amber-300' : isCrypto ? 'text-[#f5c451]' : 'text-[#8ea0ba]';
+    b.className = b === btn
+      ? 'region-btn px-3 py-1.5 rounded-lg bg-[#253c61] text-white shrink-0'
+      : `region-btn px-3 py-1.5 rounded-lg bg-[#131e31] ${baseText} shrink-0`;
+  });
+  renderAll();
+});
+
+document.getElementById('exchangeChips').addEventListener('click', e => {
+  const btn = e.target.closest('[data-ex]');
+  if (!btn) return;
+  ui.exchangeFilter = btn.dataset.ex;
+  renderAll();
+});
+
+document.getElementById('benchmarkTabs').addEventListener('click', e => {
+  const btn = e.target.closest('[data-benchmark]');
+  if (!btn) return;
+  activeBenchmarkGroup = btn.dataset.benchmark;
+  document.querySelectorAll('.benchmark-tab').forEach(b => {
+    b.className = b === btn
+      ? 'benchmark-tab px-2.5 py-1 rounded-lg bg-[#253c61] text-white shrink-0 font-bold'
+      : 'benchmark-tab px-2.5 py-1 rounded-lg bg-[#131e31] text-[#8ea0ba] shrink-0 font-bold';
+  });
+  renderGlobalBenchmarks();
+});
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  ui.searchQuery = e.target.value;
+  renderAll();
+});
+document.getElementById('clearSearchBtn').addEventListener('click', () => {
+  ui.searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  renderAll();
+});
+
+document.addEventListener('click', e => {
+  const starBtn = e.target.closest('[data-star]');
+  if (starBtn) {
+    e.stopPropagation();
+    const code = starBtn.dataset.star;
+    const idx = state.watchlist.indexOf(code);
+    if (idx >= 0) state.watchlist.splice(idx, 1); else state.watchlist.unshift(code);
+    saveState();
+    renderAll();
+    return;
+  }
+  const row = e.target.closest('.stock-row[data-code]');
+  if (row) {
+    selectStock(row.dataset.code, true, true);
+    return;
+  }
+  const pick = e.target.closest('[data-pickprice]');
+  if (pick && ui.orderType === 'LIMIT') {
+    document.getElementById('orderPriceInput').value = pick.dataset.pickprice;
+    updateOrderPanelEstimates();
+    return;
+  }
+  const cancelBtn = e.target.closest('[data-cancelid]');
+  if (cancelBtn) {
+    cancelOrder(cancelBtn.dataset.cancelid);
+    return;
+  }
+});
+
+document.getElementById('favToggleBtn').addEventListener('click', () => {
+  const idx = state.watchlist.indexOf(ui.selectedCode);
+  if (idx >= 0) state.watchlist.splice(idx, 1); else state.watchlist.unshift(ui.selectedCode);
+  saveState();
+  renderAll();
+});
+
+document.getElementById('timeframeBtns').addEventListener('click', e => {
+  const btn = e.target.closest('[data-tf]');
+  if (!btn) return;
+  ui.timeframe = btn.dataset.tf;
+  document.querySelectorAll('.tf-btn').forEach(b => {
+    b.className = b === btn
+      ? 'tf-btn px-2.5 py-1 rounded-md text-[11px] font-bold bg-[#253c61] text-white'
+      : 'tf-btn px-2.5 py-1 rounded-md text-[11px] font-bold text-[#8ea0ba]';
+  });
+  renderCandlestickChart();
+});
+
+document.getElementById('bottomDeskTabs').addEventListener('click', e => {
+  const btn = e.target.closest('[data-btab]');
+  if (!btn) return;
+  ui.bottomTab = btn.dataset.btab;
+  document.querySelectorAll('.btab-btn').forEach(b => {
+    b.className = b === btn
+      ? 'btab-btn px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#253c61] text-white'
+      : 'btab-btn px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-[#131e31] text-[#8ea0ba]';
+  });
+  renderPortfolioView();
+});
+
+document.getElementById('cancelAllOpenBtn').addEventListener('click', () => {
+  state.openOrders.map(o => o.id).forEach(id => cancelOrder(id));
+});
+
+// 주문 컨트롤
+document.getElementById('sideBuyBtn').addEventListener('click', () => { ui.orderSide = 'buy'; updateSideButtonsUI(); updateOrderPanelEstimates(); });
+document.getElementById('sideSellBtn').addEventListener('click', () => { ui.orderSide = 'sell'; updateSideButtonsUI(); updateOrderPanelEstimates(); });
+
+document.querySelectorAll('.otype-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ui.orderType = btn.dataset.otype;
+    document.querySelectorAll('.otype-btn').forEach(b => {
+      b.className = b === btn
+        ? 'otype-btn py-1 rounded-md text-[11px] font-bold bg-[#253c61] text-white'
+        : 'otype-btn py-1 rounded-md text-[11px] font-bold text-[#8ea0ba]';
+    });
+    updateOrderPanelEstimates();
+  });
+});
+
+document.getElementById('priceMinusBtn').addEventListener('click', () => {
+  if (ui.orderType === 'MARKET') return;
+  const s = getStock(ui.selectedCode);
+  const cur = EXCHANGES[s.ex].currency;
+  const isCrypto = EXCHANGES[s.ex].region === 'CRYPTO';
+  const tick = getTickSize(s.price, cur, isCrypto);
+  const v = Number(document.getElementById('orderPriceInput').value) || s.price;
+  document.getElementById('orderPriceInput').value = roundToTick(Math.max(tick, v - tick), cur, isCrypto);
+  updateOrderPanelEstimates();
+});
+
+document.getElementById('pricePlusBtn').addEventListener('click', () => {
+  if (ui.orderType === 'MARKET') return;
+  const s = getStock(ui.selectedCode);
+  const cur = EXCHANGES[s.ex].currency;
+  const isCrypto = EXCHANGES[s.ex].region === 'CRYPTO';
+  const tick = getTickSize(s.price, cur, isCrypto);
+  const v = Number(document.getElementById('orderPriceInput').value) || s.price;
+  document.getElementById('orderPriceInput').value = roundToTick(v + tick, cur, isCrypto);
+  updateOrderPanelEstimates();
+});
+
+document.getElementById('qtyMinusBtn').addEventListener('click', () => {
+  const ex = EXCHANGES[getStock(ui.selectedCode).ex];
+  const isCrypto = ex.region === 'CRYPTO';
+  const v = Number(document.getElementById('orderQtyInput').value) || ex.lot;
+  const nv = Math.max(ex.lot, v - ex.lot);
+  document.getElementById('orderQtyInput').value = isCrypto ? Number(nv.toFixed(4)) : nv;
+  updateOrderPanelEstimates();
+});
+
+document.getElementById('qtyPlusBtn').addEventListener('click', () => {
+  const ex = EXCHANGES[getStock(ui.selectedCode).ex];
+  const isCrypto = ex.region === 'CRYPTO';
+  const v = Number(document.getElementById('orderQtyInput').value) || 0;
+  const nv = v + ex.lot;
+  document.getElementById('orderQtyInput').value = isCrypto ? Number(nv.toFixed(4)) : nv;
+  updateOrderPanelEstimates();
+});
+
+document.querySelectorAll('.pct-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const ex = EXCHANGES[getStock(ui.selectedCode).ex];
+    const isCrypto = ex.region === 'CRYPTO';
+    const maxQty = Number(document.getElementById('maxOrderQtyText').dataset.maxqty) || 0;
+    let target = Math.max(ex.lot, Math.floor((maxQty * Number(btn.dataset.pct)) / ex.lot) * ex.lot);
+    if (!isCrypto) target = Math.floor(target);
+    document.getElementById('orderQtyInput').value = isCrypto ? Number(target.toFixed(4)) : target;
+    updateOrderPanelEstimates();
+  });
+});
+
+document.getElementById('maxOrderQtyText').addEventListener('click', () => {
+  const maxQty = Number(document.getElementById('maxOrderQtyText').dataset.maxqty) || 0;
+  if (maxQty > 0) { document.getElementById('orderQtyInput').value = maxQty; updateOrderPanelEstimates(); }
+});
+
+document.getElementById('orderPriceInput').addEventListener('input', updateOrderPanelEstimates);
+document.getElementById('orderQtyInput').addEventListener('input', updateOrderPanelEstimates);
+document.getElementById('submitOrderBtn').addEventListener('click', placeOrder);
+
+// 도구 시트 액션
+document.getElementById('jumpNextOpenBtn').addEventListener('click', () => { closeAllSheets(); jumpToNextExchangeOpen(); });
+document.getElementById('toggleHolidayBtn').addEventListener('click', () => {
+  state.isHolidayOverride = !state.isHolidayOverride;
+  document.getElementById('holidayStateText').textContent = state.isHolidayOverride ? 'ON' : 'OFF';
+  saveState();
+  renderAll();
+  pushToast(state.isHolidayOverride ? '🗓️ 휴장일 ON' : '🗓️ 휴장일 해제', '거래소 개장 상태가 변경되었습니다.', 'neutral');
+});
+document.getElementById('corpActionBtn').addEventListener('click', () => { closeAllSheets(); triggerCorporateActions(); });
+document.getElementById('splitActionBtn').addEventListener('click', () => {
+  closeAllSheets();
+  const ratio = Number(prompt('가상 액면분할 비율 (예: 2 = 2:1)', '2'));
+  if (Number.isFinite(ratio)) applySimulatedSplit(ui.selectedCode, ratio);
+});
+document.getElementById('openFxModalBtn').addEventListener('click', () => { closeAllSheets(); openFxModal(); });
+document.getElementById('connectEquityApiBtn').addEventListener('click', () => {
+  closeAllSheets();
+  const current = localStorage.getItem(TWELVE_DATA_KEY) || '';
+  const key = prompt('Twelve Data API 키를 입력하세요 (비우면 해제)', current);
+  if (key === null) return;
+  if (!key.trim()) { localStorage.removeItem(TWELVE_DATA_KEY); pushToast('API 키 해제', '가상 시뮬레이션으로 전환됩니다.', 'neutral'); }
+  else { localStorage.setItem(TWELVE_DATA_KEY, key.trim()); pushToast('API 키 저장 완료', '지원 종목 시세 조회를 활성화합니다.', 'neutral'); }
+});
+document.getElementById('autoFxCheckbox').addEventListener('change', e => {
+  state.autoFx = e.target.checked;
+  saveState();
+  updateOrderPanelEstimates();
+});
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const rows = [['Time', 'Type', 'Code', 'Name', 'Exchange', 'Qty', 'Price', 'TotalKRW'],
+    ...state.logs.map(l => [l.time, l.type, l.code, l.name, l.ex, l.qty, l.priceNative, Math.round(l.totalKrw)])];
+  const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'marketdesk_mobile_history.csv';
+  a.click();
+});
+
+let resetArmed = false;
+document.getElementById('resetSimBtn').addEventListener('click', e => {
+  if (!resetArmed) {
+    resetArmed = true;
+    e.target.textContent = '한번 더 터치 시 초기화';
+    setTimeout(() => { resetArmed = false; e.target.textContent = '계좌 초기화'; }, 3000);
+    return;
+  }
+  resetArmed = false;
+  e.target.textContent = '계좌 초기화';
+  state = createFreshState(DEFAULT_SEED_KRW);
+  saveState();
+  closeAllSheets();
+  selectStock('NVDA', true, false);
+  pushToast('계좌 초기화 완료', '원금 ₩10,000,000으로 재설정되었습니다.', 'neutral');
+});
+
+// 캔버스 터치 & 마우스 십자선
+const candleCanvas = document.getElementById('candleCanvas');
+function updateChartCrosshairAt(clientX) {
+  const rect = candleCanvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const plotW = rect.width - 72;
+  if (x < 8 || x > 8 + plotW) {
+    ui.hoverCandleIdx = -1;
+  } else {
+    const count = Math.min(40, getStock(ui.selectedCode).candles.length);
+    ui.hoverCandleIdx = Math.min(count - 1, Math.max(0, Math.floor(((x - 8) / plotW) * count)));
+  }
+  renderCandlestickChart();
+}
+candleCanvas.addEventListener('touchstart', e => { if (e.touches[0]) updateChartCrosshairAt(e.touches[0].clientX); }, { passive: true });
+candleCanvas.addEventListener('touchmove', e => { if (e.touches[0]) updateChartCrosshairAt(e.touches[0].clientX); }, { passive: true });
+candleCanvas.addEventListener('touchend', () => { ui.hoverCandleIdx = -1; renderAll(); });
+candleCanvas.addEventListener('mousemove', e => updateChartCrosshairAt(e.clientX));
+candleCanvas.addEventListener('mouseleave', () => { ui.hoverCandleIdx = -1; renderAll(); });
+
+window.addEventListener('resize', () => { if (ui.mobileTab === 'chart') renderCandlestickChart(); });
+
+/**
+ * ============================================================================
+ * 10. 회원 계정 시스템
+ * ============================================================================
+ */
+function updateHeaderUserUI() {
+  const db = getMembersDb();
+  const member = db[activeUserId];
+  const nameEl = document.getElementById('userDisplayName');
+  const avatarEl = document.getElementById('userAvatarBadge');
+  const infoEl = document.getElementById('authCurrentUserInfo');
+  const logoutBtn = document.getElementById('logoutMemberBtn');
+
+  if (member) {
+    nameEl.textContent = member.nickname;
+    avatarEl.textContent = member.nickname.slice(0, 1).toUpperCase();
+    infoEl.textContent = `${member.nickname} (@${member.id}) · ${member.style}`;
+    logoutBtn.classList.remove('hidden');
+  } else {
+    nameEl.textContent = '게스트';
+    avatarEl.textContent = 'G';
+    infoEl.textContent = '게스트 트레이더 (비회원 체험중)';
+    logoutBtn.classList.add('hidden');
+  }
+
+  const ids = Object.keys(db);
+  const wrap = document.getElementById('savedMembersWrap');
+  const listEl = document.getElementById('savedMembersList');
+  if (ids.length > 0) {
+    wrap.classList.remove('hidden');
+    listEl.innerHTML = ids.map(id => {
+      const m = db[id];
+      const isCur = id === activeUserId;
+      return `<button type="button" data-quickid="${id}" class="px-2.5 py-1 rounded-lg text-xs font-semibold border ${isCur ? 'bg-[#1f365c] border-[#4b9cff] text-white' : 'bg-[#0b1322] border-[#263854] text-slate-300'}">${m.nickname} (${id})</button>`;
+    }).join('');
+  } else {
+    wrap.classList.add('hidden');
+  }
+}
+
+function switchActiveUser(userId) {
+  saveState();
+  activeUserId = userId || 'guest';
+  localStorage.setItem(SESSION_KEY, activeUserId);
+  state = loadState();
+  updateHeaderUserUI();
+  selectStock(ui.selectedCode, true, false);
+}
+
+document.getElementById('openAuthModalBtn').addEventListener('click', () => {
+  updateHeaderUserUI();
+  openBottomSheet('authModal');
+});
+document.getElementById('authTabLogin').addEventListener('click', () => {
+  document.getElementById('authTabLogin').className = 'py-2 rounded-lg text-xs font-bold bg-[#233859] text-white';
+  document.getElementById('authTabRegister').className = 'py-2 rounded-lg text-xs font-bold text-[#8494ac]';
+  document.getElementById('loginForm').classList.remove('hidden');
+  document.getElementById('registerForm').classList.add('hidden');
+});
+document.getElementById('authTabRegister').addEventListener('click', () => {
+  document.getElementById('authTabRegister').className = 'py-2 rounded-lg text-xs font-bold bg-[#233859] text-white';
+  document.getElementById('authTabLogin').className = 'py-2 rounded-lg text-xs font-bold text-[#8494ac]';
+  document.getElementById('registerForm').classList.remove('hidden');
+  document.getElementById('loginForm').classList.add('hidden');
+});
+
+document.getElementById('registerForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const nickname = document.getElementById('regNicknameInput').value.trim();
+  const id = document.getElementById('regIdInput').value.trim().toLowerCase();
+  const pw = document.getElementById('regPwInput').value;
+  const seedKrw = Number(document.getElementById('regSeedSelect').value) || DEFAULT_SEED_KRW;
+  const style = document.getElementById('regStyleSelect').value;
+  const errEl = document.getElementById('regErrorMsg');
+
+  if (!nickname || !id || pw.length < 4 || id === 'guest') {
+    errEl.textContent = '올바른 닉네임, 아이디, 4자 이상 비밀번호를 입력하세요.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  const db = getMembersDb();
+  if (db[id]) {
+    errEl.textContent = '이미 존재하는 아이디입니다.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  db[id] = { id, nickname, pw, seedKrw, style, createdAt: Date.now() };
+  saveMembersDb(db);
+  saveState();
+  activeUserId = id;
+  localStorage.setItem(SESSION_KEY, id);
+  state = createFreshState(seedKrw);
+  saveState();
+  updateHeaderUserUI();
+  selectStock(ui.selectedCode, true, false);
+  closeAllSheets();
+  pushToast(`🎉 환영합니다, ${nickname}님!`, `가상 계좌가 개설되었습니다.`, 'up');
+});
+
+document.getElementById('loginForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const id = document.getElementById('loginIdInput').value.trim().toLowerCase();
+  const pw = document.getElementById('loginPwInput').value;
+  const errEl = document.getElementById('loginErrorMsg');
+  const member = getMembersDb()[id];
+  if (!member || member.pw !== pw) {
+    errEl.textContent = '아이디 또는 비밀번호가 일치하지 않습니다.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  switchActiveUser(id);
+  closeAllSheets();
+  pushToast(`👋 ${member.nickname}님 로그인`, '저장된 계좌를 불러왔습니다.', 'neutral');
+});
+
+document.getElementById('logoutMemberBtn').addEventListener('click', () => {
+  switchActiveUser('guest');
+  closeAllSheets();
+  pushToast('로그아웃 완료', '게스트 계좌로 전환되었습니다.', 'neutral');
+});
+
+document.getElementById('savedMembersList').addEventListener('click', e => {
+  const btn = e.target.closest('[data-quickid]');
+  if (!btn) return;
+  document.getElementById('authTabLogin').click();
+  document.getElementById('loginIdInput').value = btn.dataset.quickid;
+});
+
+/**
+ * ============================================================================
+ * 11. 모바일 참여형 튜토리얼
+ * ============================================================================
+ */
+const TUTORIAL_STEPS = [
+  {
+    targetId: 'marketListContainer',
+    title: 'STEP 1 · 종목 터치해서 선택하기',
+    desc: '시세 목록에서 원하는 종목을 터치하면 차트·상세 화면으로 바로 이동합니다.',
+    action: '목록에서 아무 종목이나 한 번 터치해 보세요.',
+    test: e => !!e.target.closest('.stock-row[data-code]')
+  },
+  {
+    targetId: 'timeframeBtns',
+    title: 'STEP 2 · 차트 기간 전환하기',
+    desc: '분봉·일봉·주봉·월봉 버튼으로 흐름을 바꾸고, 차트 위를 드래그해 가격을 확인하세요.',
+    action: '차트 상단의 기간 버튼을 하나 터치해 보세요.',
+    test: e => !!e.target.closest('#timeframeBtns [data-tf]')
+  },
+  {
+    targetId: 'mobileBottomNav',
+    title: 'STEP 3 · 하단 탭으로 호가·주문 이동',
+    desc: '하단 [호가·주문] 탭이나 [매수하기] 버튼을 누르면 5단계 호가와 주문창이 한눈에 나옵니다.',
+    action: '하단 바의 [호가·주문] 탭 또는 [매수하기]를 눌러보세요.',
+    test: e => !!e.target.closest('[data-mtab="order"]') || !!e.target.closest('[onclick*="openMobileOrderSide"]')
+  },
+  {
+    targetId: 'orderQtyInput',
+    title: 'STEP 4 · 수량 입력 및 완료',
+    desc: '호가를 터치하면 단가가 자동 입력되고, 수량과 퍼센트 버튼으로 간편하게 주문을 연습할 수 있습니다.',
+    action: '수량 입력칸이나 % 버튼을 한 번 눌러보세요.',
+    test: e => (e.target && e.target.id === 'orderQtyInput') || !!e.target.closest('.pct-btn')
+  }
+];
+
+let currentTutStep = 0;
+function clearTutorialHighlights() {
+  document.querySelectorAll('.tutorial-highlight').forEach(el => el.classList.remove('tutorial-highlight'));
+}
+function renderTutorialStep() {
+  const step = TUTORIAL_STEPS[currentTutStep];
+  clearTutorialHighlights();
+  const target = document.getElementById(step.targetId);
+  if (target) target.classList.add('tutorial-highlight');
+
+  document.getElementById('tutStepBadge').textContent = `STEP ${currentTutStep + 1} / ${TUTORIAL_STEPS.length}`;
+  document.getElementById('tutTitle').textContent = step.title;
+  document.getElementById('tutDesc').textContent = step.desc;
+  document.getElementById('tutActionStatus').textContent = '👆 ' + step.action;
+  document.getElementById('tutDots').innerHTML = TUTORIAL_STEPS.map((_, idx) =>
+    `<span class="w-2 h-2 rounded-full ${idx === currentTutStep ? 'bg-[#ff4d64]' : idx < currentTutStep ? 'bg-emerald-400' : 'bg-[#2a3c59]'}"></span>`
+  ).join('');
+  document.getElementById('tutPrevBtn').classList.toggle('hidden', currentTutStep === 0);
+  document.getElementById('tutNextBtn').textContent = currentTutStep === TUTORIAL_STEPS.length - 1 ? '완료 ✓' : '다음 →';
+}
+function handleTutorialAction(e) {
+  const step = TUTORIAL_STEPS[currentTutStep];
+  if (!step || !step.test || !step.test(e)) return;
+  document.getElementById('tutActionStatus').textContent = '✅ 잘하셨습니다! 다음 단계로 넘어갑니다.';
+  clearTutorialHighlights();
+  setTimeout(() => {
+    if (!document.getElementById('tutorialOverlay').classList.contains('open')) return;
+    if (currentTutStep < TUTORIAL_STEPS.length - 1) { currentTutStep++; renderTutorialStep(); }
+    else closeTutorial();
+  }, 450);
+}
+function openTutorial(startStep = 0) {
+  closeAllSheets();
+  setMobileTab('market');
+  currentTutStep = startStep;
+  renderTutorialStep();
+  document.getElementById('tutorialOverlay').classList.add('open');
+  document.addEventListener('click', handleTutorialAction, true);
+  document.addEventListener('focusin', handleTutorialAction, true);
+}
+function closeTutorial() {
+  clearTutorialHighlights();
+  document.removeEventListener('click', handleTutorialAction, true);
+  document.removeEventListener('focusin', handleTutorialAction, true);
+  localStorage.setItem(TUTORIAL_DONE_KEY, '1');
+  document.getElementById('tutorialOverlay').classList.remove('open');
+}
+
+document.getElementById('openTutorialBtn').addEventListener('click', () => openTutorial(0));
+document.getElementById('tutSkipBtn').addEventListener('click', closeTutorial);
+document.getElementById('tutPrevBtn').addEventListener('click', () => { if (currentTutStep > 0) { currentTutStep--; renderTutorialStep(); } });
+document.getElementById('tutNextBtn').addEventListener('click', () => {
+  if (currentTutStep < TUTORIAL_STEPS.length - 1) { currentTutStep++; renderTutorialStep(); }
+  else closeTutorial();
+});
+
+// 초기 실행
+updateHeaderUserUI();
+selectStock(ui.selectedCode, true, false);
+connectBinanceWs();
+setInterval(simulationStep, 1200);
+if (!localStorage.getItem(TUTORIAL_DONE_KEY)) {
+  setTimeout(() => openTutorial(0), 400);
+}
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
