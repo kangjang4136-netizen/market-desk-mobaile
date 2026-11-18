@@ -1,0 +1,6 @@
+{
+  "appId": "com.marketdesk.mts",
+  "appName": "MARKET DESK",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
