@@ -1,0 +1,19 @@
+{
+  "name": "MARKET DESK — 모바일 트레이딩",
+  "short_name": "MARKET DESK",
+  "description": "글로벌 주식 및 암호화폐 모의투자 모바일 트레이딩 앱",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080d17",
+  "theme_color": "#080d17",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
